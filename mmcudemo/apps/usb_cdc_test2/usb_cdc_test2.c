@@ -12,8 +12,8 @@ int main (void)
 {
     usb_cdc_t usb_cdc;
 
-    pio_config_set (LED1_PIO, PIO_OUTPUT_LOW);                
-    pio_config_set (LED2_PIO, PIO_OUTPUT_LOW);                
+    pio_config_set (PIO_LED_G, PIO_OUTPUT_LOW);                
+    pio_config_set (PIO_LED_Y, PIO_OUTPUT_LOW);                
 
     usb_cdc = usb_cdc_init ();
     
@@ -46,11 +46,11 @@ int main (void)
             switch (ch)
             {
             case '0':
-                pio_output_set (LED2_PIO, 0);
+                pio_output_set (PIO_LED_Y, 0);
                 break;
 
             case '1':
-                pio_output_set (LED2_PIO, 1);
+                pio_output_set (PIO_LED_Y, 1);
                 break;
 
             default:
@@ -59,6 +59,6 @@ int main (void)
         }
 
         /* Check if USB disconnected.  */
-        pio_output_set (LED1_PIO, usb_cdc_update ());
+        pio_output_set (PIO_LED_G, usb_cdc_update ());
     }
 }

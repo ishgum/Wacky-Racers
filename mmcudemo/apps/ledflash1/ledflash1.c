@@ -78,5 +78,7 @@ int main (void)
 			fputc (ch, stdout);
 			pio_output_toggle(PIO_LED_Y);
 		}
+		
+		usb_cdc_update();
     }
 }
