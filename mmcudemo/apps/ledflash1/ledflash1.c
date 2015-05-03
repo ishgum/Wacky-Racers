@@ -1,4 +1,5 @@
 
+#include <string.h>
 #include <stdio.h>
 #include <pio.h>
 #include <usb_cdc.h>
@@ -28,6 +29,7 @@ void init_pins( void )
 	pio_config_set (PIO_AUX_ENABLE, PIO_OUTPUT_HIGH); 
 }
 
+#define BUFFER_SIZE 20
 usb_cdc_t usb_cdc;
 void init_usb(void)
 {
@@ -72,13 +74,53 @@ int main (void)
 
 		}
 		
+		/*
 		while (usb_cdc_read_ready_p (usb_cdc))
         {
 			char ch = fgetc (stdin);
 			fputc (ch, stdout);
 			pio_output_toggle(PIO_LED_Y);
 		}
+		*/
 		
-		usb_cdc_update();
+		static char ch_buffer[BUFFER_SIZE] = {0};
+		static int ch_count = 0;
+		
+		if ( usb_cdc_update() )
+		{
+			while (usb_cdc_read_ready_p (usb_cdc))
+			{
+				ch_buffer[ch_count] = usb_cdc_getc(usb_cdc);
+				if (ch_buffer[ch_count] == '\n')
+				{
+					ch_buffer[ch_count] = 0;
+					if (strcmp("on", &ch_buffer) == 0)
+					{
+						pio_output_high(PIO_LED_Y);
+					}
+					if (strcmp("off", &ch_buffer) == 0)
+					{
+						pio_output_low(PIO_LED_Y);
+					}
+					if (strcmp("query", &ch_buffer) == 0)
+					{
+						usb_write (usb_cdc->usb, "ok\n", 3);
+						usb_write (usb_cdc->usb, "", 0);
+						//printf("ok\n");
+					}
+					else
+					{
+						char ch2 = atoi(&ch_buffer);
+						putc(ch2,stdout);
+					}
+					ch_count = 0;
+				}
+				else if (++ch_count == BUFFER_SIZE)
+				{
+					ch_count = 0;
+				}
+			}
+			
+		}
     }
 }
