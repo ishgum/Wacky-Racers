@@ -37,6 +37,7 @@
 #define IR_RC5_RX_ACTIVE_STATE 0
 #endif
 
+#define IR_RC5_RX_PIO PA26_PIO
 
 /** Return output state of IR receiver.
     @return IR receiver state (1 = IR modulation detected).  */
