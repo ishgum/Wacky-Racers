@@ -1,7 +1,7 @@
 
 #include <string.h>
 #include <stdio.h>
-#include <pio.h>
+#include "pio.h"
 #include <usb_cdc.h>
 #include <sys.h>
 
@@ -46,7 +46,13 @@ void init_pins( void )
 	pio_config_set (PIO_AUX_ENABLE, PIO_OUTPUT_HIGH); 
 }
 
-
+void
+interruptInit(void) {
+	pio_irq_config_set (PA26_PIO, PIO_IRQ_ANY_EDGE);
+	irq_config (PIO_ID(PA26_PIO), 1, irInterruptHandler);
+	irq_enable (PIO_ID(PA26_PIO));
+    pio_irq_enable (PA26_PIO);
+}
 
 
 /* Define how fast ticks occur.  This must be faster than
@@ -58,11 +64,7 @@ int main (void)
 	init_pins();
 	ir_rc5_rx_init ();
 	
-	
-	pio_irq_config_set (PA26_PIO, PIO_IRQ_ANY_EDGE);
-	irq_config (PIO_ID(PA26_PIO), 1, irInterruptHandler);
-	irq_enable (PIO_ID(PA26_PIO));
-    pio_irq_enable (PA26_PIO);
+	interruptInit();
 
 	
 	pio_output_high(PIO_LED_G);

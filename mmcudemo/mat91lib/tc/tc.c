@@ -29,7 +29,12 @@
    In Capture Mode, TIOA and TIOB are configured as inputs.  In
    Waveform Mode, TIOA is always configured to be an output and TIOB
    is an output if it is not selected to be the external trigger.
-   However, this driver does not support TIOB.  */
+   However, this driver does not support TIOB.  
+
+   Although the counters are only 16 bit, this driver synthesises 64 bit
+   counters using overflow interrupts.   Even with a 48 MHz clock,
+   these 64 bit counters will take 3000 years to overflow!  
+*/
 
 #define TC_CHANNEL(TC) ((TC) - tc_devices)
 
@@ -224,6 +229,9 @@ bool
 tc_config_1 (tc_t tc, tc_mode_t mode, tc_period_t period, 
              tc_period_t delay, tc_prescale_t prescale)
 {
+    if (prescale == 0)
+        prescale = 2;
+
     tc->mode = mode;
     tc->period = period;
     tc->delay = delay;
@@ -290,7 +298,7 @@ tc_config_1 (tc_t tc, tc_mode_t mode, tc_period_t period,
            driver does not support resetting of the counter.  
 
            The docs say that the external trigger gates the clock but
-           it appears that it resets the counter.  bSpecifying
+           it appears that it resets the counter.  Specifying
            TC_CMR_ETRGEDG_NONE disables this.  */
 
     case TC_MODE_CAPTURE_RISE_RISE:
@@ -320,6 +328,9 @@ tc_config_1 (tc_t tc, tc_mode_t mode, tc_period_t period,
             | TC_CMR_ABETRG | TC_CMR_ETRGEDG_NONE;
         tc->base->TC_IER = TC_IER_COVFS | TC_IER_LDRAS | TC_IER_LDRBS;
         break;
+
+    case TC_MODE_COUNTER:
+        break;
         
     default:
         return 0;
@@ -328,15 +339,15 @@ tc_config_1 (tc_t tc, tc_mode_t mode, tc_period_t period,
 
     /* TODO: If period > 65536 then need to increase prescale.  */
 
-    /* The available prescaler values are 1, 8, 32, 128 for MCK / 2.
-       Thus the effective prescaler values are 2, 16, 64, and 256.  On
+    /* The available prescaler values are 1, 4, 16, 64 for MCK / 2.
+       Thus the effective prescaler values are 2, 8, 32, and 128.  On
        the SAM7 TIMER_CLOCK5 is MCK / 1024 but on the SAM4S it is
        SLCK.  */
-    if (prescale > 32 && prescale < 128)
+    if (prescale > 32 && prescale <= 128)
         tc->base->TC_CMR |= TC_CMR_TCCLKS_TIMER_CLOCK4;
-    else if (prescale > 8 && prescale < 32)
+    else if (prescale > 8 && prescale <= 32)
         tc->base->TC_CMR |= TC_CMR_TCCLKS_TIMER_CLOCK3;
-    else if (prescale > 1 && prescale < 8)
+    else if (prescale > 2 && prescale <= 8)
         tc->base->TC_CMR |= TC_CMR_TCCLKS_TIMER_CLOCK2;
     else
         tc->base->TC_CMR |= TC_CMR_TCCLKS_TIMER_CLOCK1;
@@ -355,7 +366,7 @@ tc_config_1 (tc_t tc, tc_mode_t mode, tc_period_t period,
 
     
     /* Don't drive PIO if triggering ADC.  */
-    if (mode == TC_MODE_ADC)
+    if ((mode == TC_MODE_ADC) || (mode == TC_MODE_COUNTER))
         return 1;
 
     /* Make timer pin TIOAx a timer output.  Perhaps we could use
@@ -492,7 +503,7 @@ tc_clock_sync (tc_t tc, tc_period_t period)
     tc_start (tc);
     
     /* Stop CPU clock until interrupt.  FIXME, should disable other
-       interrrupts first. */
+       interrupts first. */
     mcu_cpu_idle ();
 
     /* Disable interrupt when have compare on A.  */

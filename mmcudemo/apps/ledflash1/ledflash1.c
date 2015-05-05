@@ -78,14 +78,14 @@ int main (void)
 	init_pins();
 	bt_pins_init();
 
-	/*
+	
 	usb_cdc_t usb_cdc;
 	usb_cdc = usb_cdc_init ();
     sys_redirect_stdin ((void *)usb_cdc_read, usb_cdc);
     sys_redirect_stdout ((void *)usb_cdc_write, usb_cdc);
     sys_redirect_stderr ((void *)usb_cdc_write, usb_cdc);
 	
-	*/
+	/*
 	busart_t busart0;
     busart0 = busart_init (0, BUSART_BAUD_DIVISOR (9600),
                           tx0buffer, sizeof (tx0buffer),
@@ -95,7 +95,7 @@ int main (void)
     busart1 = busart_init (1, BUSART_BAUD_DIVISOR (9600),
                           tx1buffer, sizeof (tx1buffer),
                           rx1buffer, sizeof (rx1buffer));
-	
+	*/
 	
 	pio_output_high(PIO_LED_G);
     pacer_init (LOOP_POLL_RATE);
@@ -125,7 +125,7 @@ int main (void)
 			
 		}
 		
-		
+		/*
 		while (busart_read_ready_p(busart0))
 		{
 			char ch;
@@ -140,19 +140,9 @@ int main (void)
 			busart_putc (busart1, ch);
 			pio_output_toggle(PIO_LED_R);
 		}
-
-		/*
-		static short pinstate = 0;
-		short newpinstate = pio_input_get(PIO_H_1);
-		if (pinstate != newpinstate)
-		{
-			pinstate = newpinstate;
-			pio_output_set(PIO_H_2, pinstate);
-		}
 		*/
 		
 		
-		/*
 		static int ch_count = 0;
 		if ( usb_cdc_update() )
 		{
@@ -192,9 +182,6 @@ int main (void)
 		{
 			pio_output_low(PIO_LED_R);
 		}
-		
-		*/
-		
 		
     }
 }
