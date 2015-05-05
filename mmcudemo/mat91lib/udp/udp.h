@@ -114,4 +114,6 @@ bool udp_poll (udp_t udp);
 
 udp_t udp_init (udp_request_handler_t handler, void *arg);
 
+void udp_endpoint_reset (udp_t udp, udp_ep_t endpoint);
+
 #endif

@@ -1,4 +1,4 @@
-DRIVERS = led pacer usb_cdc
+DRIVERS = led pacer usb_cdc busart
 
 TARGET = ledflash1.bin
 
