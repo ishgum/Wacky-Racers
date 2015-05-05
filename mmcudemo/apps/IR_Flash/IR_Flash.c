@@ -6,11 +6,18 @@
 #include <sys.h>
 
 #include "pacer.h"
-#include "ir_rc5_rx.h"
+//#include "ir_rc5_rx.h"
 #include "target.h"
 #include "irq.h"
+#include "tc.h"
 
 #define PIO_IR PA26_PIO
+
+#define TIMER_PIO TIOA2_PIO
+#define TIMER_PRESCALE 2
+
+#define TIMER_FREQUENCY TC_CLOCK_FREQUENCY(TIMER_PRESCALE)
+
 
 int irLEDToggle = 0;
 int count = 0;
@@ -21,6 +28,16 @@ void irInterruptHandler (void) {
 	count++;
 }
 
+
+static const tc_cfg_t tc_cfg =
+{
+    /* The PIO is not used as an input or output but must be specified
+       to select the desired channel.  */
+    .pio = TIMER_PIO,
+    .mode = TC_MODE_COUNTER,
+    .prescale = TIMER_PRESCALE,
+	.period = F_CPU / 1000000
+};
 
 
 
@@ -55,6 +72,8 @@ interruptInit(void) {
 }
 
 
+
+
 /* Define how fast ticks occur.  This must be faster than
    TICK_RATE_MIN.  */
 enum {LOOP_POLL_RATE = 200};
@@ -62,11 +81,30 @@ enum {LOOP_POLL_RATE = 200};
 int main (void)
 {		
 	init_pins();
-	ir_rc5_rx_init ();
+	//ir_rc5_rx_init ();
+	
+	tc_t tc;
+    tc_counter_t time;
+    tc_counter_t prev_time;
+	
+	tc = tc_init (&tc_cfg);
+    if (!tc) 
+    {
+        /* This will fail for an invalid choice of PIO for tc.  */
+        while (1)
+           continue;
+    }
+    tc_start (tc);
+	
+	prev_time = tc_counter_get (tc);
 	
 	interruptInit();
 
 	
+	
+	while ((tc_counter_get (tc) - prev_time) < 1000000) {
+		continue;
+	}
 	pio_output_high(PIO_LED_G);
 	
     pacer_init (LOOP_POLL_RATE);

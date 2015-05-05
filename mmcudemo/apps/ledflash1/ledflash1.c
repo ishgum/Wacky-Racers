@@ -149,7 +149,7 @@ int main (void)
 			while (usb_cdc_read_ready_p (usb_cdc))
 			{
 				ch_buffer[ch_count] = usb_cdc_getc(usb_cdc);
-				if (ch_buffer[ch_count] == '\n')
+				if (ch_buffer[ch_count] == '\n' || ch_buffer[ch_count] == '\r' || ch_buffer[ch_count] == 0)
 				{
 					ch_buffer[ch_count] = 0;
 					if (strcmp("on", &ch_buffer) == 0)
@@ -166,7 +166,7 @@ int main (void)
 						//usb_write (usb_cdc->usb, "", 0);
 						int result = udp_write(usb_cdc->usb->udp, "ok\n",3);
 						pio_output_set(PIO_LED_Y, result <= 0 );
-						udp_endpoint_reset(usb_cdc->usb->udp, UDP_EP_OUT);
+						//udp_endpoint_reset(usb_cdc->usb->udp, UDP_EP_OUT);
 					}
 					ch_count = 0;
 				}

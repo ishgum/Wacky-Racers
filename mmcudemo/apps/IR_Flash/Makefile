@@ -1,4 +1,5 @@
-DRIVERS = led pacer usb_cdc ir_rc5
+DRIVERS = led pacer usb_cdc
+PERIPHERALS = tc
 
 TARGET = IR_Flash.bin
 
