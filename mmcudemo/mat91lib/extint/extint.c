@@ -10,6 +10,7 @@
 #include "irq.h"
 
 
+
 struct extint_dev_struct
 {
     pio_t pio;
@@ -60,7 +61,7 @@ void extint_sleep (extint_t extint)
     
     /* Turn off main oscillator, PLL, and master clock, switch to slow
        clock, and sleep until get an external interrupt.  */
-    mcu_sleep ();
+    //mcu_sleep ();
     
     extint_disable (extint);
 }

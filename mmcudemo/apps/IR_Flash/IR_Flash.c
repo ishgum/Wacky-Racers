@@ -5,27 +5,22 @@
 #include <usb_cdc.h>
 #include <sys.h>
 
-#include "target.h"
 #include "pacer.h"
 #include "ir_rc5_rx.h"
-#include "extint.h"
+#include "target.h"
+#include "irq.h"
 
 #define PIO_IR PA26_PIO
 
 int irLEDToggle = 0;
-
+int count = 0;
 
 
 void irInterruptHandler (void) {
-	irLEDToggle = 1;
+	pio_irq_clear (PA26_PIO);
+	count++;
 }
 
-
-static const extint_cfg_t irInt_cfg =
-{
-    .pio = PIO_IR,
-    .handler = irInterruptHandler
-};
 
 
 
@@ -46,24 +41,10 @@ void init_pins( void )
 	pio_config_set (PIO_DIP_4, PIO_PULLUP); pio_init(PIO_DIP_4);
 	pio_config_set (PIO_SW_SLEEP, PIO_PULLUP); pio_init(PIO_SW_SLEEP);
 	
-	pio_config_set (PIO_IR, PIO_PULLUP); pio_init(PIO_IR);
+	pio_config_set (PA26_PIO, PIO_INPUT); pio_init(PA26_PIO);
 	
 	pio_config_set (PIO_AUX_ENABLE, PIO_OUTPUT_HIGH); 
 }
-
-
-static void
-IR_setup (void)
-{
-	
-    extint_t extint;
-
-    /* Note, only two PIOs can be used on the SAM7 for external interrupts.  */
-    extint = extint_init (&irInt_cfg);
-	
-	extint_enable (extint);
-}
-
 
 
 
@@ -76,7 +57,13 @@ int main (void)
 {		
 	init_pins();
 	ir_rc5_rx_init ();
-	IR_setup();
+	
+	
+	pio_irq_config_set (PA26_PIO, PIO_IRQ_ANY_EDGE);
+	irq_config (PIO_ID(PA26_PIO), 1, irInterruptHandler);
+	irq_enable (PIO_ID(PA26_PIO));
+    pio_irq_enable (PA26_PIO);
+
 	
 	pio_output_high(PIO_LED_G);
 	
@@ -85,7 +72,7 @@ int main (void)
 	short aux_power = 0;
     while (1)
     {
-		int16_t data;
+		int16_t data = 0;
 		/* Wait until next clock tick.  */
 		pacer_wait ();
 		
@@ -100,10 +87,14 @@ int main (void)
 
 		}
         
+		if (count > 100) {
+			pio_output_toggle(PIO_LED_Y);
+			count = 0;
+		}
         /* Poll the IR driver.  */
-        data = ir_rc5_rx_read ();
-        if (data > 0)
-	    pio_output_set(PIO_LED_Y, data % 2);
+        //data = ir_rc5_rx_read ();
+        //if (data > 0)
+	    //pio_output_set(PIO_LED_Y, data % 2);
 		
 		
 		
