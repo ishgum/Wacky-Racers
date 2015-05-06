@@ -14,19 +14,20 @@
 #define PIO_IR PA26_PIO
 
 #define TIMER_PIO TIOA2_PIO
-#define TIMER_PRESCALE 2
+#define TIMER_PRESCALE 128
 
 #define TIMER_FREQUENCY TC_CLOCK_FREQUENCY(TIMER_PRESCALE)
 
-#define START_BIT 1
-#define HIGH_BIT 1
-#define LOW_BIT 1
-#define TOLERANCE 1
-#define IR_BUFFER 20
+#define START_BIT 6800
+#define HIGH_BIT 1690
+#define LOW_BIT 850
+#define TOLERANCE 100
+#define IR_BUFFER 32
 
 
 int irLEDToggle = 0;
 int count = 0;
+int irCount = 0;
 bool startFound = 0;
 bool differenceFound = 0;
 bool readArray = 0;
@@ -38,28 +39,27 @@ uint64_t differenceArray[IR_BUFFER] = {0};
 
 void irInterruptHandler (void) {
 	if (!readArray) {
-		prev_time = tc_counter_get(tc);
 		difference = (tc_counter_get (tc) - prev_time);
+		prev_time = tc_counter_get(tc);
 		
-		/*
 		if (abs(difference - START_BIT) < TOLERANCE) {
 			startFound = 1;
 			irCount = 0;
 		}
-		if (startFound && irCount < IR_BUFFER) {
-			differenceArray[count++] = difference;
+		else if (startFound && irCount < IR_BUFFER) {
+			differenceArray[irCount++] = difference;
 		}
 		
-		else {
+		else if (irCount == IR_BUFFER){
 			startFound = 0;
 			readArray = 1;
 		}
-		*/
 		
 		differenceFound = 1;
-		count++;
-		pio_irq_clear (PA26_PIO);
 	}
+	count++;
+	pio_irq_clear (PA26_PIO);
+
 }
 
 
@@ -70,7 +70,7 @@ static const tc_cfg_t tc_cfg =
     .pio = TIMER_PIO,
     .mode = TC_MODE_COUNTER,
     .prescale = TIMER_PRESCALE,
-	.period = F_CPU / 1000000
+	//.period = F_CPU / 1000000
 };
 
 
@@ -99,7 +99,7 @@ void init_pins( void )
 
 void
 interruptInit(void) {
-	pio_irq_config_set (PA26_PIO, PIO_IRQ_ANY_EDGE);
+	pio_irq_config_set (PA26_PIO, PIO_IRQ_FALLING_EDGE);
 	irq_config (PIO_ID(PA26_PIO), 1, irInterruptHandler);
 	irq_enable (PIO_ID(PA26_PIO));
     pio_irq_enable (PA26_PIO);
@@ -141,9 +141,10 @@ int main (void)
 
 	
 	
-	while ((tc_counter_get (tc) - prev_time) < 100000000) {
+	/*while ((tc_counter_get (tc) - prev_time) < 100000000) {
 		continue;
 	}
+	*/
 	pio_output_high(PIO_LED_G);
 	
     pacer_init (LOOP_POLL_RATE);
@@ -151,7 +152,6 @@ int main (void)
 	short aux_power = 0;
     while (1)
     {
-		int16_t data = 0;
 		/* Wait until next clock tick.  */
 		pacer_wait ();
 		
@@ -166,28 +166,42 @@ int main (void)
 
 		}
 		
+		if (usb_cdc_update()){
+			if (readArray) {
+				int i = 0;
+				for (; i < IR_BUFFER; i++) {
+					printf("%llu\n\r", differenceArray[i]);
+				}
+			}
+		}
         
 		if (readArray) {
-			int i = 0;
-			for (; i < IR_BUFFER; i++) {
+			int j = 0;
+			unsigned long data = 0;
+			for (; j < IR_BUFFER; j++) {
 				data <<= 1;
-				if ((differenceArray[i] - HIGH_BIT) < TOLERANCE) {
+				if (abs(HIGH_BIT - differenceArray[j]) < TOLERANCE) {
 					data += 1;
 				}
-				else if ((differenceArray[i] - LOW_BIT) < TOLERANCE){
+				else if (abs(LOW_BIT - differenceArray[j]) < TOLERANCE){
 				}
 				else {
+					printf("Got some bad data at %u", j);
 					data = 0;
 					break;
 				}
 			}
 			readArray = 0;
+			printf("Data: %lu\n\r", data);
 		}
+		
 		
 		if (count > 1000) {
 			pio_output_toggle(PIO_LED_Y);
 			count = 0;
 		}
+	
+		
         /* Poll the IR driver.  */
         //data = ir_rc5_rx_read ();
 		//printf("%u", data);
