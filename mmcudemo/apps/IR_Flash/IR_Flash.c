@@ -18,14 +18,48 @@
 
 #define TIMER_FREQUENCY TC_CLOCK_FREQUENCY(TIMER_PRESCALE)
 
+#define START_BIT 1
+#define HIGH_BIT 1
+#define LOW_BIT 1
+#define TOLERANCE 1
+#define IR_BUFFER 20
+
 
 int irLEDToggle = 0;
 int count = 0;
+bool startFound = 0;
+bool differenceFound = 0;
+bool readArray = 0;
 
+tc_t tc;
+tc_counter_t prev_time;
+uint64_t difference = 0;
+uint64_t differenceArray[IR_BUFFER] = {0};
 
 void irInterruptHandler (void) {
-	pio_irq_clear (PA26_PIO);
-	count++;
+	if (!readArray) {
+		prev_time = tc_counter_get(tc);
+		difference = (tc_counter_get (tc) - prev_time);
+		
+		/*
+		if (abs(difference - START_BIT) < TOLERANCE) {
+			startFound = 1;
+			irCount = 0;
+		}
+		if (startFound && irCount < IR_BUFFER) {
+			differenceArray[count++] = difference;
+		}
+		
+		else {
+			startFound = 0;
+			readArray = 1;
+		}
+		*/
+		
+		differenceFound = 1;
+		count++;
+		pio_irq_clear (PA26_PIO);
+	}
 }
 
 
@@ -83,9 +117,14 @@ int main (void)
 	init_pins();
 	//ir_rc5_rx_init ();
 	
-	tc_t tc;
+	usb_cdc_t usb_cdc;
+	usb_cdc = usb_cdc_init ();
+	sys_redirect_stdin ((void *)usb_cdc_read, usb_cdc);
+    sys_redirect_stdout ((void *)usb_cdc_write, usb_cdc);
+    sys_redirect_stderr ((void *)usb_cdc_write, usb_cdc);
+	
+
     tc_counter_t time;
-    tc_counter_t prev_time;
 	
 	tc = tc_init (&tc_cfg);
     if (!tc) 
@@ -102,7 +141,7 @@ int main (void)
 
 	
 	
-	while ((tc_counter_get (tc) - prev_time) < 1000000) {
+	while ((tc_counter_get (tc) - prev_time) < 100000000) {
 		continue;
 	}
 	pio_output_high(PIO_LED_G);
@@ -126,13 +165,32 @@ int main (void)
 			
 
 		}
+		
         
-		if (count > 100) {
+		if (readArray) {
+			int i = 0;
+			for (; i < IR_BUFFER; i++) {
+				data <<= 1;
+				if ((differenceArray[i] - HIGH_BIT) < TOLERANCE) {
+					data += 1;
+				}
+				else if ((differenceArray[i] - LOW_BIT) < TOLERANCE){
+				}
+				else {
+					data = 0;
+					break;
+				}
+			}
+			readArray = 0;
+		}
+		
+		if (count > 1000) {
 			pio_output_toggle(PIO_LED_Y);
 			count = 0;
 		}
         /* Poll the IR driver.  */
         //data = ir_rc5_rx_read ();
+		//printf("%u", data);
         //if (data > 0)
 	    //pio_output_set(PIO_LED_Y, data % 2);
 		
