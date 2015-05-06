@@ -24,6 +24,12 @@
 #define TOLERANCE 100
 #define IR_BUFFER 32
 
+#define OFF_BUTTON 3772793023
+#define UP_BUTTON 3772778233
+#define DOWN_BUTTON 3772810873
+#define LEFT_BUTTON 3772819033
+#define RIGHT_BUTTON  3772794553
+#define CENTRE_BUTTON 3772782313
 
 int irLEDToggle = 0;
 int count = 0;
@@ -150,6 +156,10 @@ int main (void)
     pacer_init (LOOP_POLL_RATE);
 	
 	short aux_power = 0;
+	unsigned long data = 0;
+	unsigned long finalData = 0;
+	unsigned long previousData = 0;
+		
     while (1)
     {
 		/* Wait until next clock tick.  */
@@ -177,7 +187,7 @@ int main (void)
         
 		if (readArray) {
 			int j = 0;
-			unsigned long data = 0;
+			data = 0;
 			for (; j < IR_BUFFER; j++) {
 				data <<= 1;
 				if (abs(HIGH_BIT - differenceArray[j]) < TOLERANCE) {
@@ -191,24 +201,39 @@ int main (void)
 					break;
 				}
 			}
-			readArray = 0;
 			printf("Data: %lu\n\r", data);
 		}
 		
-		
-		if (count > 1000) {
-			pio_output_toggle(PIO_LED_Y);
-			count = 0;
+		if (data != previousData) {
+			finalData = data;
 		}
-	
+		else {
+			finalData = 0;
+		}
 		
+		
+		if (finalData == OFF_BUTTON) {
+			pio_output_low(PIO_LED_G);
+			pio_output_low(PIO_LED_Y);
+			pio_output_low(PIO_LED_R);	
+		}
+		if (finalData == UP_BUTTON) {
+			pio_output_toggle(PIO_LED_R);
+		}
+		if (finalData == CENTRE_BUTTON) {
+			pio_output_toggle(PIO_LED_Y);
+		}
+		if (finalData == DOWN_BUTTON) {
+			pio_output_toggle(PIO_LED_G);
+		}
+		previousData = data;
         /* Poll the IR driver.  */
         //data = ir_rc5_rx_read ();
 		//printf("%u", data);
         //if (data > 0)
 	    //pio_output_set(PIO_LED_Y, data % 2);
 		
-		
+		readArray = 0;
 		
     }
 }
