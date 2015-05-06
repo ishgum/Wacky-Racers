@@ -16,8 +16,8 @@
 
 
 #ifndef USB_PRODUCT_ID
-#define USB_PRODUCT_ID 0x6124
-//#define USB_PRODUCT_ID 0x6202
+//#define USB_PRODUCT_ID 0x6124
+#define USB_PRODUCT_ID 0x6202
 #endif
 
 

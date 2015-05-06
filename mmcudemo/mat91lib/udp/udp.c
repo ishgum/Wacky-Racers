@@ -636,7 +636,8 @@ void udp_endpoint_complete (udp_t udp, udp_ep_t endpoint, udp_status_t status)
     }
 }
 
-void
+
+static void
 udp_endpoint_reset (udp_t udp, udp_ep_t endpoint)
 {
     /* Reset endpoint FIFOs.  This clears RXBYTECNT.  It does not clear
@@ -833,12 +834,8 @@ udp_write_async (udp_t udp, udp_ep_t endpoint, const void *pdata,
     
     /* This should be automatically cleared when a FIFO's contents are
        sent to the host.  */
-	
     if (UDP->UDP_CSR[endpoint] & UDP_CSR_TXPKTRDY)
-	{
         udp_endpoint_error (udp, endpoint, UDP_ERROR_WEIRD);
-	}
-	
     
     udp_endpoint_interrupt_disable (udp, endpoint);
         
@@ -1480,11 +1477,11 @@ udp_endpoint_write (udp_t udp, udp_ep_t endpoint,
 
     if (udp_write_async (udp, endpoint, buffer, len, 0, 0)
         != UDP_STATUS_SUCCESS)
-			return 0;
+        return 0;
 
     /* We may have a race condition if someone else grabs the endpoint
        as soon as it goes idle.  I'm not sure if this can happen.  */
-	
+
     timeout = UDP_TIMEOUT_US;
     while (pep->state != UDP_EP_STATE_IDLE)
     {
@@ -1748,7 +1745,7 @@ udp_t udp_init (udp_request_handler_t request_handler, void *arg)
     pio_init (USB_VBUS_PIO);
     pio_config_set (USB_VBUS_PIO, PIO_INPUT);
 
-    pio_irq_config_set (USB_VBUS_PIO, PIO_IRQ_ANY_EDGE);
+    pio_irq_config_set (USB_VBUS_PIO, PIO_IRQ_EDGE);
 
     irq_config (PIO_ID (USB_VBUS_PIO), 1, udp_vbus_interrupt_handler);
     

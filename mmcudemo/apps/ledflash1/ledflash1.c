@@ -86,11 +86,25 @@ int main (void)
     sys_redirect_stdout ((void *)usb_cdc_write, usb_cdc);
     sys_redirect_stderr ((void *)usb_cdc_write, usb_cdc);
 	
+<<<<<<< HEAD
+=======
+	/*
+>>>>>>> origin/master
 	busart_t busart0;
     busart0 = busart_init (0, BUSART_BAUD_DIVISOR (115200),
                           tx0buffer, sizeof (tx0buffer),
                           rx0buffer, sizeof (rx0buffer));
 	
+<<<<<<< HEAD
+=======
+	busart_t busart1;
+    busart1 = busart_init (1, BUSART_BAUD_DIVISOR (9600),
+                          tx1buffer, sizeof (tx1buffer),
+                          rx1buffer, sizeof (rx1buffer));
+	*/
+	
+	pio_output_high(PIO_LED_G);
+>>>>>>> origin/master
     pacer_init (LOOP_POLL_RATE);
 	
 	short bt_connection = 0;
@@ -132,21 +146,76 @@ int main (void)
 			else
 			{
 				bt_pins_off();
+<<<<<<< HEAD
 				bt_connection = 0;
 				pio_output_set( PIO_LED_G, bt_connection );
 			}
 		}
 		if (aux_power)
+=======
+			
+		}
+		
+		/*
+		while (busart_read_ready_p(busart0))
+		{
+			char ch;
+			ch = busart_getc (busart0);
+			busart_putc (busart0, ch);
+			pio_output_toggle(PIO_LED_Y);
+		}
+		while (busart_read_ready_p(busart1))
+		{
+			char ch;
+			ch = busart_getc (busart1);
+			busart_putc (busart1, ch);
+			pio_output_toggle(PIO_LED_R);
+		}
+		*/
+		
+		
+		static int ch_count = 0;
+		if ( usb_cdc_update() )
+>>>>>>> origin/master
 		{
 			bt_connection = pio_input_get(PIO_BT_CONNECTED);
 			pio_output_set( PIO_LED_G, bt_connection );
 			
 			while (busart_read_ready_p(busart0))
 			{
+<<<<<<< HEAD
 				char ch;
 				ch = busart_getc (busart0);
 				usb_cdc_putc(usb_cdc, ch);
 				pio_output_high(PIO_LED_Y);
+=======
+				ch_buffer[ch_count] = usb_cdc_getc(usb_cdc);
+				if (ch_buffer[ch_count] == '\n' || ch_buffer[ch_count] == '\r' || ch_buffer[ch_count] == 0)
+				{
+					ch_buffer[ch_count] = 0;
+					if (strcmp("on", &ch_buffer) == 0)
+					{
+						pio_output_high(PIO_LED_Y);
+					}
+					else if (strcmp("off", &ch_buffer) == 0)
+					{
+						pio_output_low(PIO_LED_Y);
+					}
+					else if (strcmp("yo", &ch_buffer) == 0)
+					{
+						//usb_write (usb_cdc->usb, "ok\n", 3);
+						//usb_write (usb_cdc->usb, "", 0);
+						int result = udp_write(usb_cdc->usb->udp, "ok\n",3);
+						pio_output_set(PIO_LED_Y, result <= 0 );
+						//udp_endpoint_reset(usb_cdc->usb->udp, UDP_EP_OUT);
+					}
+					ch_count = 0;
+				}
+				else if (++ch_count == BUFFER_SIZE)
+				{
+					ch_count = 0;
+				}
+>>>>>>> origin/master
 			}
 			
 			if ( usb_cdc_update() )
@@ -169,5 +238,9 @@ int main (void)
 				busart_putc (busart0, '?');
 			}
 		}
+<<<<<<< HEAD
+=======
+		
+>>>>>>> origin/master
     }
 }

@@ -3,19 +3,20 @@
    Date:   16 April 2013
    Descr: 
 */
+#include "target.h"
 #include "led.h"
 #include "pio.h"
 #include "pacer.h"
 #include "extint.h"
 
 
-#define EXTINT1_PIO PA30_PIO
+#define EXTINT1_PIO PA26_PIO
 
 
 /* Define LED configuration.  */
 static const led_cfg_t led1_cfg =
 {
-    .pio = LED1_PIO,
+    .pio = PA23_PIO,
     .active = 1
 };
 
@@ -25,7 +26,7 @@ static led_t led1;
 
 static void handler (void)
 {
-    led_toggle (led1);
+    pio_output_high (PA23_PIO);
 }
 
 static const extint_cfg_t extint1_cfg =
