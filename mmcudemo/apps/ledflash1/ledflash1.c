@@ -38,8 +38,6 @@ void bt_pins_off( void )
 	pio_config_set (PIO_BT_CONNECTED, PIO_OUTPUT_LOW);
 	pio_config_set (PIO_BT_RTS, PIO_OUTPUT_LOW);
 	pio_config_set (PIO_BT_CTS, PIO_OUTPUT_LOW);
-	//pio_config_set (PIO_BT_RX, PIO_OUTPUT_LOW);
-	//pio_config_set (PIO_BT_TX, PIO_OUTPUT_LOW);
 }
 
 void bt_pins_on( void )
@@ -50,16 +48,26 @@ void bt_pins_on( void )
 	pio_config_set (PIO_BT_CONNECTED, PIO_PULLDOWN);
 	pio_config_set (PIO_BT_RTS, PIO_PULLDOWN);
 	pio_config_set (PIO_BT_CTS, PIO_OUTPUT_LOW);
-	//pio_config_set (PIO_BT_RX, PIO_OUTPUT_LOW);
-	//pio_config_set (PIO_BT_TX, PIO_INPUT);
 }
 
 void bt_pins_init( void )
 {
 	bt_pins_off();
-	//pio_init(PIO_BT_TX);
 	pio_init(PIO_BT_RTS);
 	pio_init(PIO_BT_CONNECTED);
+}
+
+
+void process_command( char * string )
+{
+	if ( strcmp( "on", string ) == 0 )
+	{
+		pio_output_high(PIO_LED_Y);
+	}
+	else if (strcmp("off", string) == 0 )
+	{
+		pio_output_low(PIO_LED_Y);
+	}
 }
 
 
@@ -72,65 +80,30 @@ enum {LOOP_POLL_RATE = 200};
 char tx0buffer[BUFFER_SIZE] = {0};
 char rx0buffer[BUFFER_SIZE] = {0};
 
+unsigned int ch_count = 0;
 char ch_buffer[BUFFER_SIZE] = {0};
 
 int main (void)
 {		
 	init_pins();
 	bt_pins_init();
-
 	
 	usb_cdc_t usb_cdc;
 	usb_cdc = usb_cdc_init ();
-    sys_redirect_stdin ((void *)usb_cdc_read, usb_cdc);
-    sys_redirect_stdout ((void *)usb_cdc_write, usb_cdc);
-    sys_redirect_stderr ((void *)usb_cdc_write, usb_cdc);
 	
-<<<<<<< HEAD
-=======
-	/*
->>>>>>> origin/master
 	busart_t busart0;
     busart0 = busart_init (0, BUSART_BAUD_DIVISOR (115200),
                           tx0buffer, sizeof (tx0buffer),
                           rx0buffer, sizeof (rx0buffer));
 	
-<<<<<<< HEAD
-=======
-	busart_t busart1;
-    busart1 = busart_init (1, BUSART_BAUD_DIVISOR (9600),
-                          tx1buffer, sizeof (tx1buffer),
-                          rx1buffer, sizeof (rx1buffer));
-	*/
 	
-	pio_output_high(PIO_LED_G);
->>>>>>> origin/master
     pacer_init (LOOP_POLL_RATE);
 	
 	short bt_connection = 0;
 	short aux_power = 0;
     while (1)
     {		
-		/* Wait until next clock tick.  */
 		pacer_wait ();
-		
-		if (!pio_input_get(PIO_DIP_1))
-		{
-			pio_output_low(PIO_LED_Y);
-		}
-		static last = 0;
-		if (!pio_input_get(PIO_DIP_2))
-		{
-			if(!last)
-			{
-				busart_putc (busart0, '$');
-				busart_putc (busart0, '$');
-				busart_putc (busart0, '$');
-				last = 1;
-			}
-		}
-		else
-			last = 0;
 		
 		short state;
 		state = !pio_input_get(PIO_DIP_4);
@@ -146,101 +119,58 @@ int main (void)
 			else
 			{
 				bt_pins_off();
-<<<<<<< HEAD
 				bt_connection = 0;
 				pio_output_set( PIO_LED_G, bt_connection );
 			}
 		}
+		
+		// dip 3 routes bluetooth to usb
+		short route_bt_to_usb = !pio_input_get(PIO_DIP_3);
+		
 		if (aux_power)
-=======
-			
-		}
-		
-		/*
-		while (busart_read_ready_p(busart0))
-		{
-			char ch;
-			ch = busart_getc (busart0);
-			busart_putc (busart0, ch);
-			pio_output_toggle(PIO_LED_Y);
-		}
-		while (busart_read_ready_p(busart1))
-		{
-			char ch;
-			ch = busart_getc (busart1);
-			busart_putc (busart1, ch);
-			pio_output_toggle(PIO_LED_R);
-		}
-		*/
-		
-		
-		static int ch_count = 0;
-		if ( usb_cdc_update() )
->>>>>>> origin/master
 		{
 			bt_connection = pio_input_get(PIO_BT_CONNECTED);
 			pio_output_set( PIO_LED_G, bt_connection );
-			
-			while (busart_read_ready_p(busart0))
-			{
-<<<<<<< HEAD
-				char ch;
-				ch = busart_getc (busart0);
-				usb_cdc_putc(usb_cdc, ch);
-				pio_output_high(PIO_LED_Y);
-=======
-				ch_buffer[ch_count] = usb_cdc_getc(usb_cdc);
-				if (ch_buffer[ch_count] == '\n' || ch_buffer[ch_count] == '\r' || ch_buffer[ch_count] == 0)
-				{
-					ch_buffer[ch_count] = 0;
-					if (strcmp("on", &ch_buffer) == 0)
-					{
-						pio_output_high(PIO_LED_Y);
-					}
-					else if (strcmp("off", &ch_buffer) == 0)
-					{
-						pio_output_low(PIO_LED_Y);
-					}
-					else if (strcmp("yo", &ch_buffer) == 0)
-					{
-						//usb_write (usb_cdc->usb, "ok\n", 3);
-						//usb_write (usb_cdc->usb, "", 0);
-						int result = udp_write(usb_cdc->usb->udp, "ok\n",3);
-						pio_output_set(PIO_LED_Y, result <= 0 );
-						//udp_endpoint_reset(usb_cdc->usb->udp, UDP_EP_OUT);
-					}
-					ch_count = 0;
-				}
-				else if (++ch_count == BUFFER_SIZE)
-				{
-					ch_count = 0;
-				}
->>>>>>> origin/master
-			}
 			
 			if ( usb_cdc_update() )
 			{
 				while (usb_cdc_read_ready_p (usb_cdc))
 				{
 					char ch = usb_cdc_getc(usb_cdc);
-					if (ch == '\r')
-						ch = '\n';
-					busart_putc (busart0, ch);
-				}	
+					if (ch != '\r')
+					{
+						if (route_bt_to_usb)
+							busart_putc (busart0, ch);
+					}
+				}
 			}
-		}
-		else
-		{
-			static int ticks = 0;
-			if (ticks++ == 100)
+			
+			if ( busart_read_ready_p(busart0) )
 			{
-				ticks = 0;
-				busart_putc (busart0, '?');
+				char ch = busart_getc(busart0);
+				if (ch != '\r')
+				{
+					if (route_bt_to_usb)
+						usb_cdc_putc(usb_cdc, ch)
+					else
+					{
+						if (ch == '\n')
+							ch = 0;
+						
+						ch_buffer[ch_count++] = ch;
+						
+						if (!ch)
+						{
+							process_command(&ch_buffer);
+							ch_count = 0;
+						}
+						else if(ch_count == BUFFER_SIZE)
+						{
+							ch_count = 0;
+						}
+					}
+				}
 			}
 		}
-<<<<<<< HEAD
-=======
-		
->>>>>>> origin/master
     }
 }
