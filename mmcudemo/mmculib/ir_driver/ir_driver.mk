@@ -1,0 +1,9 @@
+IR_DRIVER_DIR = $(DRIVER_DIR)/ir_driver
+
+VPATH += $(IR_DRIVER_DIR)
+SRC += ir_driver.c
+
+PERIPHERALS += tc
+
+INCLUDES += -I$(IR_DRIVER_DIR)
+

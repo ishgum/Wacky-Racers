@@ -31,11 +31,9 @@
 #define RIGHT_BUTTON  3772794553
 #define CENTRE_BUTTON 3772782313
 
-int irLEDToggle = 0;
-int count = 0;
+
 int irCount = 0;
 bool startFound = 0;
-bool differenceFound = 0;
 bool readArray = 0;
 
 tc_t tc;
@@ -61,10 +59,7 @@ void irInterruptHandler (void) {
 			startFound = 0;
 			readArray = 1;
 		}
-		
-		differenceFound = 1;
 	}
-	count++;
 	pio_irq_clear (PA26_PIO);
 
 }
@@ -112,7 +107,9 @@ interruptInit(void) {
     pio_irq_enable (PA26_PIO);
 }
 
-
+void irInit(void) {
+	
+}
 
 
 /* Define how fast ticks occur.  This must be faster than
@@ -227,12 +224,8 @@ int main (void)
 		if (finalData == DOWN_BUTTON) {
 			pio_output_toggle(PIO_LED_G);
 		}
-		previousData = data;
-        /* Poll the IR driver.  */
-        //data = ir_rc5_rx_read ();
-		//printf("%u", data);
-        //if (data > 0)
-	    //pio_output_set(PIO_LED_Y, data % 2);
+
+
 		
 		readArray = 0;
 		
