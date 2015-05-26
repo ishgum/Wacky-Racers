@@ -43,7 +43,7 @@ void bt_pins_off( void )
 void bt_pins_on( void )
 {
 	pio_config_set (PIO_BT_RESET, PIO_OUTPUT_HIGH);
-	pio_config_set (PIO_BT_DISCOVER, PIO_OUTPUT_LOW);
+	pio_config_set (PIO_BT_DISCOVER, PIO_OUTPUT_HIGH);
 	pio_config_set (PIO_BT_RECONNECT, PIO_OUTPUT_LOW);
 	pio_config_set (PIO_BT_CONNECTED, PIO_PULLDOWN);
 	pio_config_set (PIO_BT_RTS, PIO_PULLDOWN);
@@ -126,6 +126,7 @@ int main (void)
 		
 		// dip 3 routes bluetooth to usb
 		short route_bt_to_usb = !pio_input_get(PIO_DIP_3);
+		pio_output_set(PIO_LED_R, route_bt_to_usb);
 		
 		if (aux_power)
 		{
@@ -140,7 +141,9 @@ int main (void)
 					if (ch != '\r')
 					{
 						if (route_bt_to_usb)
+						{
 							busart_putc (busart0, ch);
+						}
 					}
 				}
 			}
@@ -151,7 +154,9 @@ int main (void)
 				if (ch != '\r')
 				{
 					if (route_bt_to_usb)
-						usb_cdc_putc(usb_cdc, ch)
+					{
+						usb_cdc_putc(usb_cdc, ch);
+					}
 					else
 					{
 						if (ch == '\n')

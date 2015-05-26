@@ -48,7 +48,8 @@ void irInterruptHandler (void) {
 		difference = (tc_counter_get (tc) - prev_time);
 		prev_time = tc_counter_get(tc);
 		
-		if (abs(difference - START_BIT) < TOLERANCE) {
+		
+		if (abs(START_BIT - difference) < TOLERANCE) {
 			startFound = 1;
 			irCount = 0;
 		}
