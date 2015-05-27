@@ -17,8 +17,37 @@
 
 #define TIMER_FREQUENCY TC_CLOCK_FREQUENCY(TIMER_PRESCALE)
 
+//These number are for a Samsung remote only!
+#define START_BIT 6800
+#define HIGH_BIT 1690
+#define LOW_BIT 850
+#define TOLERANCE 100
+#define IR_BUFFER 32
 
 
+#define OFF_BUTTON 3772793023
+#define UP_BUTTON 3772778233
+#define DOWN_BUTTON 3772810873
+#define LEFT_BUTTON 3772819033
+#define RIGHT_BUTTON  3772794553
+#define CENTRE_BUTTON 3772782313
+#define ONE_BUTTON 3772784863
+#define TWO_BUTTON 3772817503
+#define THREE_BUTTON 3772801183
+#define FOUR_BUTTON 3772780783
+#define FIVE_BUTTON 3772813423
+#define SIX_BUTTON 3772797103
+#define SEVEN_BUTTON 3772788943
+#define EIGHT_BUTTON 3772821583
+#define NINE_BUTTON 3772805263
+#define ZERO_BUTTON  3772811383
+#define VOLUME_UP_BUTTON 3772833823
+#define VOLUME_DOWN_BUTTON 3772829743
+#define CHANNEL_UP_BUTTON 3772795063
+#define CHANNEL_DOWN_BUTTON 3772778743
+#define MUTE_BUTTON 3772837903
+
+#define NUM_BUTTONS 6
 
 static int irCount = 0;
 static bool startFound = 0;
@@ -30,7 +59,27 @@ static uint64_t difference = 0;
 static uint64_t differenceArray[IR_BUFFER] = {0};
 
 
-static unsigned long button[] = {OFF_BUTTON, UP_BUTTON, DOWN_BUTTON, LEFT_BUTTON, RIGHT_BUTTON, CENTRE_BUTTON}
+static unsigned long button[] = {ZERO_BUTTON,		//0
+								 ONE_BUTTON,		//1
+								 TWO_BUTTON,		//2
+								 THREE_BUTTON,		//3
+								 FOUR_BUTTON,		//4
+								 FIVE_BUTTON,		//5
+								 SIX_BUTTON,		//6
+								 SEVEN_BUTTON,		//7
+								 EIGHT_BUTTON,		//8
+								 NINE_BUTTON,		//9
+								 OFF_BUTTON,		//10
+								 UP_BUTTON, 		//11
+								 DOWN_BUTTON, 		//12
+								 LEFT_BUTTON, 		//13
+								 RIGHT_BUTTON, 		//14
+								 CENTRE_BUTTON,		//15								 
+								 VOLUME_UP_BUTTON,	//16
+								 VOLUME_DOWN_BUTTON,//17
+								 CHANNEL_UP_BUTTON, //18
+								 CHANNEL_DOWN_BUTTON,//19
+								 MUTE_BUTTON};		//20
 
 
 void irInterruptHandler (void) {
@@ -47,8 +96,9 @@ void irInterruptHandler (void) {
 			differenceArray[irCount++] = difference;
 		}
 		
-		else if (irCount == IR_BUFFER){
+		if (startFound && irCount == IR_BUFFER){
 			startFound = 0;
+			irCount = 0;
 			readArray = 1;
 		}
 	}
@@ -99,6 +149,7 @@ bool irCTR (void) {
 }
 
 void irClear (void) {
+	irCount = 0;
 	readArray = 0;
 }
 
@@ -109,6 +160,7 @@ unsigned long irRead (void)
 	unsigned long data = 0;
 	int j = 0;
 	
+	
 	for (; j < IR_BUFFER; j++) {
 		data <<= 1;
 		if (abs(HIGH_BIT - differenceArray[j]) < TOLERANCE) {
@@ -117,10 +169,12 @@ unsigned long irRead (void)
 		else if (abs(LOW_BIT - differenceArray[j]) < TOLERANCE){
 		}
 		else {
-			printf("Got some bad data at %u", j);
-			return 128;
+			return 127;
 		}
-	}		
+	}	
+	printf("Final: %lu\n\r", data);  	// Debug
+	irClear();
+	
 	int i = 0;
 	for (; i < NUM_BUTTONS; i++) {
 		if (data == button[i]) {

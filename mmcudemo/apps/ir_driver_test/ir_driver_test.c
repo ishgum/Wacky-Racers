@@ -8,6 +8,13 @@
 #include "ir_driver.h"
 
 
+#define BUTTON_OFF 10
+#define BUTTON_FORWARD 11
+#define BUTTON_BACK 12
+#define BUTTON_LEFT 13
+#define BUTTON_RIGHT 14
+#define BUTTON_CENTRE 15
+
 
 void init_pins( void )
 {
@@ -61,13 +68,13 @@ int main (void)
     pacer_init (LOOP_POLL_RATE);
 	
 	short aux_power = 0;
-	unsigned long finalData = 0;
+	unsigned long finalData = 128;
 		
     while (1)
     {
 		/* Wait until next clock tick.  */
 		pacer_wait ();
-		finalData = 0;
+		finalData = 128;
 		
 		short state;
 		state = !pio_input_get(PIO_DIP_4);
@@ -86,23 +93,21 @@ int main (void)
 		if (irCTR()) {
 			finalData = irRead();
 		}
-        
 		
-		if (finalData == OFF_BUTTON) {
+		if (finalData == BUTTON_OFF) {
 			pio_output_low(PIO_LED_G);
 			pio_output_low(PIO_LED_Y);
 			pio_output_low(PIO_LED_R);	
 		}
-		if (finalData == UP_BUTTON) {
+		if (finalData == BUTTON_FORWARD) {
 			pio_output_toggle(PIO_LED_R);
 		}
-		if (finalData == CENTRE_BUTTON) {
+		if (finalData == BUTTON_CENTRE) {
 			pio_output_toggle(PIO_LED_Y);
 		}
-		if (finalData == DOWN_BUTTON) {
+		if (finalData == BUTTON_BACK) {
 			pio_output_toggle(PIO_LED_G);
 		}
 
-		irClear();
     }
 }

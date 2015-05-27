@@ -48,7 +48,7 @@ void irInterruptHandler (void) {
 		
 		
 		if (abs(START_BIT - difference) < TOLERANCE) {
-			startFound = 1;
+		startFound = 1;
 			irCount = 0;
 		}
 		else if (startFound && irCount < IR_BUFFER) {
@@ -107,9 +107,6 @@ interruptInit(void) {
     pio_irq_enable (PA26_PIO);
 }
 
-void irInit(void) {
-	
-}
 
 
 /* Define how fast ticks occur.  This must be faster than

@@ -76,12 +76,12 @@ void process_command( char * string )
 enum {LOOP_POLL_RATE = 200};
 
 
-#define BUFFER_SIZE 64
-char tx0buffer[BUFFER_SIZE] = {0};
-char rx0buffer[BUFFER_SIZE] = {0};
+#define BT_BUFFER_SIZE 64
+char tx0buffer[BT_BUFFER_SIZE] = {0};
+char rx0buffer[BT_BUFFER_SIZE] = {0};
 
 unsigned int ch_count = 0;
-char ch_buffer[BUFFER_SIZE] = {0};
+char ch_buffer[BT_BUFFER_SIZE] = {0};
 
 int main (void)
 {		
@@ -123,6 +123,10 @@ int main (void)
 				pio_output_set( PIO_LED_G, bt_connection );
 			}
 		}
+		
+		int btReset = pio_input_get(PIO_SW_SLEEP);
+		pio_output_set(PIO_BT_RESET, btReset);
+		
 		
 		// dip 3 routes bluetooth to usb
 		short route_bt_to_usb = !pio_input_get(PIO_DIP_3);
@@ -169,7 +173,7 @@ int main (void)
 							process_command(&ch_buffer);
 							ch_count = 0;
 						}
-						else if(ch_count == BUFFER_SIZE)
+						else if(ch_count == BT_BUFFER_SIZE)
 						{
 							ch_count = 0;
 						}
