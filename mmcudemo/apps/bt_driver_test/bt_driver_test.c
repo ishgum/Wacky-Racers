@@ -57,6 +57,7 @@ int main (void)
     {		
 		pacer_wait ();
 		
+		pio_output_set(PIO_LED_G, bt_connected());
 		
 		if (bt_read()) {
 			process_command(bt_data);
