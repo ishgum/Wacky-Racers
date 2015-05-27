@@ -59,27 +59,27 @@ static uint64_t difference = 0;
 static uint64_t differenceArray[IR_BUFFER] = {0};
 
 
-static unsigned long button[] = {ZERO_BUTTON,		
-								 ONE_BUTTON,		
-								 TWO_BUTTON,		
-								 THREE_BUTTON,		
-								 FOUR_BUTTON,		
-								 FIVE_BUTTON,		
-								 SIX_BUTTON,		
-								 SEVEN_BUTTON,		
-								 EIGHT_BUTTON,		
-								 NINE_BUTTON,		
-								 OFF_BUTTON,		
-								 UP_BUTTON, 		
-								 DOWN_BUTTON, 		
-								 LEFT_BUTTON, 		
-								 RIGHT_BUTTON, 		
-								 CENTRE_BUTTON,										 
-								 VOLUME_UP_BUTTON,	
-								 VOLUME_DOWN_BUTTON,
-								 CHANNEL_UP_BUTTON, 
-								 CHANNEL_DOWN_BUTTON,
-								 MUTE_BUTTON};		
+static unsigned long button[] = {ZERO_BUTTON,		//0	
+								 ONE_BUTTON,		//1
+								 TWO_BUTTON,		//2
+								 THREE_BUTTON,		//3
+								 FOUR_BUTTON,		//4
+								 FIVE_BUTTON,		//5
+								 SIX_BUTTON,		//6
+								 SEVEN_BUTTON,		//7
+								 EIGHT_BUTTON,		//8
+								 NINE_BUTTON,		//9
+								 OFF_BUTTON,		//10
+								 UP_BUTTON, 		//11
+								 DOWN_BUTTON, 		//12
+								 LEFT_BUTTON, 		//13
+								 RIGHT_BUTTON, 		//14
+								 CENTRE_BUTTON,		//15								 
+								 VOLUME_UP_BUTTON,	//16
+								 VOLUME_DOWN_BUTTON,//17
+								 CHANNEL_UP_BUTTON, //18
+								 CHANNEL_DOWN_BUTTON,//19
+								 MUTE_BUTTON};		//20
 
 
 void irInterruptHandler (void) {

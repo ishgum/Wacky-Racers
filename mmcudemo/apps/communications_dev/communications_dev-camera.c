@@ -17,9 +17,11 @@
 #define BUTTON_LEFT 13
 #define BUTTON_RIGHT 14
 #define BUTTON_CENTRE 15
+#define BUTTON_MUTE 20
 
-
-
+#define CAPTURE_ADDRESS 0
+#define CAPTURE_LINE_SIZE 128
+#define FINAL_CAPTURE_LINE 192
 
 #define PACER_RATE 1000
 
@@ -46,6 +48,7 @@ static int char_count = 0;
 static char linebuffer[LINEBUFFER_SIZE];
 static twi_mode_t mode = TWI_MODE_SLAVE;
 static twi_t twi;
+static bool read_image;
 
 static void
 process_serial_command (void)
@@ -112,71 +115,79 @@ process_serial_command (void)
 
 ///////////////////////////////
 
+void motor_comms (uint8_t address, char byte) {
+    char message[16] = {0};
+    twi_ret_t ret;
+	message[0] = byte;
+	message[1] = 0;
+	ret = twi_master_addr_write (twi, SLAVE_ADDR_M, address, 1, message,
+								 sizeof (message));
+	
+}
 
+
+bool capture_request (uint8_t address) {
+	char camera_message[8] = {0};
+    twi_ret_t ret;
+	
+	ret = twi_master_addr_read_timeout (twi, SLAVE_ADDR_C, CAPTURE_ADDRESS, 1, camera_message,
+                                            sizeof (camera_message) , TIMEOUT_US);
+	if (ret >= 0) {
+		return 1;
+	}
+	else {
+		return 0;
+	}
+}
+
+char* read_request (char address) {
+	char camera_message[CAPTURE_LINE_SIZE] = {0};
+    twi_ret_t ret;
+	
+	ret = twi_master_addr_read_timeout (twi, SLAVE_ADDR_C, address, 1, camera_message,
+                                            sizeof (camera_message) , TIMEOUT_US);
+	return camera_message;
+}
 
 
 
 void process_bt_command( char * string )
 {
-	uint8_t address = 0;
-    char message[16] = {0};
-    twi_ret_t ret;
-	
 	if (string[0] == 'M') {
-		address = string[1];
-		message[0] = string[2];
-		message[1] = 0;
-		/*
-		msg = string[2];
-		if (!msg)
-		{
-			fprintf (stderr, "Syntax error, w addr message\n");
-			return;
-		}
-		msg++;
-		strncpy (message, msg, sizeof (message));
-		*/
-		ret = twi_master_addr_write (twi, SLAVE_ADDR_M, address, 1, message,
-									 sizeof (message));
+		motor_comms(string[1], string[2]);
+	}
+	if (string[0] == 'C') {
+		read_image = capture_request(0);
 	}
 }
 
 
 void process_ir_command (unsigned int ir_data) {
-	uint8_t address = 0;
-    char *msg;
-    char message[16] = {0};
-    twi_ret_t ret;
+	
+	
 	
 	if (ir_data == BUTTON_OFF) {
-		address = 1;
-		message[0] = 127;
+		motor_comms(1, 127);
 	}
 	if (ir_data == BUTTON_FORWARD) {
-		address = 1;
-		message[0] = 180;
+		motor_comms(1, 180);
 	}
 	if (ir_data == BUTTON_BACK) {
-		address = 1;
-		message[0] = 0;
+		motor_comms(1, 0);
 	}
 	if (ir_data == BUTTON_LEFT) {
-		address = 2;
-		message[0] = 0;
+		motor_comms(2, 0);
 	}
 	if (ir_data == BUTTON_CENTRE) {
-		address = 2;
-		message[0] = 127;
+		motor_comms(2, 127);
 	}
 	if (ir_data == BUTTON_RIGHT) {
-		address = 2;
-		message[0] = 255;
+		motor_comms(2, 255);
 	}
-	
+	if (ir_data == BUTTON_MUTE) {
+		read_image = capture_request(0);
+	}
 		
-	message[1] = 0;
-	ret = twi_master_addr_write (twi, SLAVE_ADDR_M, address, 1, message,
-								 sizeof (message));
 }
 
 
@@ -235,6 +246,8 @@ int main (void)
     fprintf (stderr, "Slave M listening on address %d\n", SLAVE_ADDR_M);
 	fprintf (stderr, "Slave C listening on address %d\n", SLAVE_ADDR_C);
 	
+	uint8_t read_address = 0;
+	
     while (1)
     {
 		/* Wait until next clock tick.  */
@@ -255,6 +268,24 @@ int main (void)
 		
 		if (irCTR()) {
 			process_ir_command(irRead());
+		}
+		
+		
+		if (read_image) {
+			char* read_message = read_request(read_address);
+			int i = 0;
+			for (; i < CAPTURE_LINE_SIZE; i++) {
+				bt_write(read_message[i]);
+			}
+			bt_write(read_address++);
+			
+		}
+		else if (read_address == FINAL_CAPTURE_LINE ){
+			read_image = 0;
+			read_address = 0;
+		}
+		else{
+			read_address = 0;
 		}
 		
 
