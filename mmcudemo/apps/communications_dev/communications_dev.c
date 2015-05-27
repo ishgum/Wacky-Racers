@@ -6,14 +6,48 @@
 #include <sys.h>
 #include "pacer.h"
 #include "ir_driver.h"
+#include "bt_driver.h"
 
 
-#define BUTTON_OFF 0
-#define BUTTON_FORWARD 1
-#define BUTTON_BACK 2
-#define BUTTON_LEFT 3
-#define BUTTON_RIGHT 4
-#define BUTTON_CENTRE 5
+#define BUTTON_OFF 10
+#define BUTTON_FORWARD 11
+#define BUTTON_BACK 12
+#define BUTTON_LEFT 13
+#define BUTTON_RIGHT 14
+#define BUTTON_CENTRE 15
+
+
+
+void process_bt_command( char * string )
+{
+	if ( strcmp( "on", string ) == 0 )
+	{
+		pio_output_high(PIO_LED_Y);
+	}
+	else if (strcmp("off", string) == 0 )
+	{
+		pio_output_low(PIO_LED_Y);
+	}
+}
+
+
+void process_ir_command (unsigned int ir_data) {
+		if (ir_data == BUTTON_OFF) {
+			pio_output_low(PIO_LED_G);
+			pio_output_low(PIO_LED_Y);
+			pio_output_low(PIO_LED_R);	
+		}
+		if (ir_data == BUTTON_FORWARD) {
+			pio_output_toggle(PIO_LED_R);
+		}
+		if (ir_data == BUTTON_CENTRE) {
+			pio_output_toggle(PIO_LED_Y);
+		}
+		if (ir_data == BUTTON_BACK) {
+			pio_output_toggle (PIO_LED_G);
+		}
+}
+
 
 
 void init_pins( void )
@@ -47,7 +81,9 @@ int main (void)
 {		
 	init_pins();
 	irInit();
-	//ir_rc5_rx_init ();
+	char* bt_data = bt_init();
+	
+	pacer_init (LOOP_POLL_RATE);
 	
 	usb_cdc_t usb_cdc;
 	usb_cdc = usb_cdc_init ();
@@ -55,59 +91,28 @@ int main (void)
     sys_redirect_stdout ((void *)usb_cdc_write, usb_cdc);
     sys_redirect_stderr ((void *)usb_cdc_write, usb_cdc);
 	
-
-
 	
 	
-	/*while ((tc_counter_get (tc) - prev_time) < 100000000) {
-		continue;
-	}
-	*/
-	pio_output_high(PIO_LED_G);
+	pio_output_set(PIO_AUX_ENABLE, 0);
 	
-    pacer_init (LOOP_POLL_RATE);
-	
-	short aux_power = 0;
-	unsigned long finalData = 128;
 		
     while (1)
     {
 		/* Wait until next clock tick.  */
 		pacer_wait ();
-		finalData = 128;
+		usb_cdc_update();
 		
-		short state;
-		state = !pio_input_get(PIO_DIP_4);
-		if (aux_power != state)
-		{
-			aux_power = state;
-			pio_output_set(PIO_AUX_ENABLE, !aux_power);
-			
-
+		pio_output_set(PIO_LED_G, bt_connected());
+		
+		if (bt_read()) {
+			process_bt_command(bt_data);
 		}
 		
-		if (usb_cdc_update()){
-			
-		}
 		
 		if (irCTR()) {
-			finalData = irRead();
+			process_ir_command(irRead());
 		}
 		
-		if (finalData == BUTTON_OFF) {
-			pio_output_low(PIO_LED_G);
-			pio_output_low(PIO_LED_Y);
-			pio_output_low(PIO_LED_R);	
-		}
-		if (finalData == BUTTON_FORWARD) {
-			pio_output_toggle(PIO_LED_R);
-		}
-		if (finalData == BUTTON_CENTRE) {
-			pio_output_toggle(PIO_LED_Y);
-		}
-		if (finalData == BUTTON_BACK) {
-			pio_output_toggle(PIO_LED_G);
-		}
 
     }
 }

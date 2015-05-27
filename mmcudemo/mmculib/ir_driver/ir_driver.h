@@ -18,6 +18,6 @@ bool irCTR (void);
 void irClear (void);
 
 
-unsigned long irRead (void);
+unsigned int irRead (void);
 
 #endif

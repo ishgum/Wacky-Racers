@@ -7,22 +7,6 @@
 #include "target.h"
 
 
-
-
-
-void process_command( char * string )
-{
-	if ( strcmp( "on", string ) == 0 )
-	{
-		pio_output_high(PIO_LED_Y);
-	}
-	else if (strcmp("off", string) == 0 )
-	{
-		pio_output_low(PIO_LED_Y);
-	}
-}
-
-
 #define BUFFER_SIZE 64
 static char tx0buffer[BUFFER_SIZE] = {0};
 static char rx0buffer[BUFFER_SIZE] = {0};
