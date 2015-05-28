@@ -201,8 +201,7 @@ void process_bt_command( char * string )
 			motors.turn = string[2];
 		}
 	}
-	
-	}
+
 	if (string[0] == 'C') {
 		read_image = capture_request();
 	}
@@ -373,7 +372,6 @@ int main (void)
 		pio_output_set(PIO_LED_G, bt_connected());
 		
 		if (pio_input_get(PIO_DIP_3)) {
-			usb_cdc_update();
 			if (usb_cdc_read_ready_p (usb_cdc))
 				process_serial_command ();
 		}
