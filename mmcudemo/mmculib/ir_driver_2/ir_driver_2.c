@@ -8,7 +8,7 @@
 #include "target.h"
 #include "irq.h"
 #include "tc.h"
-#include "ir_driver.h"
+#include "ir_driver_2.h"
 
 #define PIO_IR PA26_PIO
 
@@ -57,7 +57,7 @@ static tc_t tc;
 static tc_counter_t prev_time;
 static uint64_t difference = 0;
 static uint64_t differenceArray[IR_BUFFER] = {0};
-
+static unsigned long data = 0;
 
 static unsigned long button[] = {ZERO_BUTTON,		//0	
 								 ONE_BUTTON,		//1
@@ -87,20 +87,31 @@ void irInterruptHandler (void) {
 		difference = (tc_counter_get (tc) - prev_time);
 		prev_time = tc_counter_get(tc);
 		
-		if (abs(START_BIT - difference) < TOLERANCE) {
-			startFound = 1;
-			irCount = 0;
+		if (!startFound) {
+			if (abs(START_BIT - difference) < TOLERANCE) {
+				startFound = 1;
+				irCount = 0;
+			}
 		}
-		
-		else if (startFound && irCount < IR_BUFFER) {
-			differenceArray[irCount++] = difference;
-		}
-		
-		if (startFound && irCount == IR_BUFFER){
-			startFound = 0;
-			irCount = 0;
-			readArray = 1;
-			pio_irq_disable (PA26_PIO);
+		else {
+			data <<= 1;
+			irCount++;
+			if (abs(HIGH_BIT - difference) < TOLERANCE) {
+				data += 1;
+			}
+			else if (abs(LOW_BIT - difference) < TOLERANCE){
+			}
+			else {
+				startFound = 0;
+				irCount = 0;
+				data = 0;
+			}
+			
+			if (irCount == IR_BUFFER){
+				startFound = 0;
+				irCount = 0;
+				readArray = 1;
+			}
 		}
 	}
 	pio_irq_clear (PA26_PIO);
@@ -152,40 +163,23 @@ bool irCTR (void) {
 void irClear (void) {
 	irCount = 0;
 	readArray = 0;
-	pio_irq_enable (PA26_PIO);
+	data = 0;
 	pio_irq_clear (PA26_PIO);
 }
 
 
 unsigned int irRead (void)
 {		
-	
-	unsigned long data = 0;
-	int j = 0;
-	
-	
-	for (; j < IR_BUFFER; j++) {
-		//printf("Difference: %llu\n\r", differenceArray[j]);
-		data <<= 1;
-		if (abs(HIGH_BIT - differenceArray[j]) < TOLERANCE) {
-			data += 1;
-		}
-		else if (abs(LOW_BIT - differenceArray[j]) < TOLERANCE){
-		}
-		else {
-			irClear();
-			return 127;
-		}
-	}	
 	//printf("Final: %lu\n\r", data);  	// Debug
-	irClear();
 	
 	unsigned int i = 0;
 	for (; i < NUM_BUTTONS; i++) {
 		if (data == button[i]) {
+			irClear();
 			return i;
 		}
 	}
+	irClear();
 	return 128;
 }
 
