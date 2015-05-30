@@ -157,6 +157,7 @@ void motor_comms (uint8_t address, char byte) {
 
 bool capture_request (void) {
 	char camera_message[8] = {0};
+	pio_output_toggle(PIO_LED_Y);
     twi_ret_t ret;
 	
 	ret = twi_master_addr_write (twi, SLAVE_ADDR_C, CAPTURE_ADDRESS, 1, camera_message,
@@ -170,16 +171,16 @@ bool capture_request (void) {
 }
 
 
+char camera_message[CAPTURE_LINE_SIZE] = {0};
 
 char* read_request (char address) {
-	char camera_message[CAPTURE_LINE_SIZE] = {0};
     twi_ret_t ret;
 	
 	ret = twi_master_addr_read_timeout (twi, SLAVE_ADDR_C, address, 1, camera_message,
                                             sizeof (camera_message) , TIMEOUT_US);
 											
 	if (ret >= 0) {
-		return camera_message;
+		return 1;
 	}
 	else {
 		read_image = 0;
@@ -265,8 +266,9 @@ void image_poll(void) {
 	static uint8_t read_address = 0;
 	
 	if (read_image) {
-		char* read_message = read_request(read_address);
-		send_image(read_message, read_address++);
+		if ( read_request(read_address) )
+			pio_output_toggle(PIO_LED_Y);
+			send_image(camera_message, read_address++);
 	}
 	else if (read_address == FINAL_CAPTURE_LINE ){
 		read_image = 0;
@@ -370,9 +372,9 @@ int main (void)
 		
 		
 		/* Check if USB disconnected.  */
-		//pio_output_set (PIO_LED_R, pio_input_get(PIO_DIP_4));
+		pio_output_set (PIO_LED_R, pio_input_get(PIO_DIP_4));
 		//pio_output_set (PIO_LED_Y, usb_cdc_update ());
-		//pio_output_set(PIO_LED_G, bt_connected());
+		pio_output_set(PIO_LED_G, bt_connected());
 		
 		if (pio_input_get(PIO_DIP_3)) {
 			if (usb_cdc_read_ready_p (usb_cdc))
@@ -394,11 +396,10 @@ int main (void)
 		motor_poll();
 		
 		if (tick % 200) {
-			//image_poll();
-			pio_output_toggle(PIO_LED_G);
+			image_poll();
+			//pio_output_toggle(PIO_LED_Y);
 		}
 		
 		tick++;
-
     }
 }
