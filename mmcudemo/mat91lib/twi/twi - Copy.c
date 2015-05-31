@@ -17,6 +17,7 @@
 #include "bits.h"
 #include "delay.h"
 
+
 #define TWI_DEVICES_NUM 2
 
 static twi_dev_t twi_devices[TWI_DEVICES_NUM];

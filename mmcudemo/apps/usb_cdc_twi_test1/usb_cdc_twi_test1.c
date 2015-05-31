@@ -20,7 +20,7 @@
 
 #define TIMEOUT_US 2000
 
-#define SLAVE_ADDR 0x42
+#define SLAVE_ADDR 0x21
 #define CLOCK_SPEED 40e3
 
 #define GENERAL_LED_PIO  LED1_PIO
@@ -33,8 +33,6 @@ static const twi_cfg_t twi_cfg =
 };
 
 
-typedef enum {STATE_ADDR, STATE_DATA} state_t;
-
 enum {LINEBUFFER_SIZE = 80};
 
 static int char_count = 0;
@@ -42,13 +40,31 @@ static char linebuffer[LINEBUFFER_SIZE];
 static twi_mode_t mode = TWI_MODE_SLAVE;
 static twi_t twi;
 
+
+
+#define CAPTURE_LINE_SIZE 97
+char camera_data[CAPTURE_LINE_SIZE] = {0};
+
+
+bool read_request (char address) {
+    twi_ret_t ret;
+	
+	ret = twi_master_addr_read_timeout (twi, SLAVE_ADDR, address, 1, camera_data,
+                                            sizeof (camera_data) , TIMEOUT_US*2L);
+							
+	return (ret >= 0);
+}
+
+char message_in[97];
+
+
 static void
 process_command (void)
 {
     char ch;
     uint8_t addr = 0;
     char *msg;
-    char message[16];
+    char message[8];
     twi_ret_t ret;
     
     ch = fgetc (stdin);
@@ -64,33 +80,12 @@ process_command (void)
 
     switch (linebuffer[0])
     {
-    case '0':
-        pio_output_set (GENERAL_LED_PIO, 0);
-        break;
-        
-    case '1':
-        pio_output_set (GENERAL_LED_PIO, 1);
-        break;
-
-    case 'h':
-        fprintf (stderr, "Hello world!\n");
-        break;
-
-    case 's':
-        mode = TWI_MODE_SLAVE;
-        fprintf (stderr, "Slave listening on address %d\n", SLAVE_ADDR);
-        break;
-
     case 'w':
         mode = TWI_MODE_MASTER;
 
         addr = atoi (linebuffer + 1);
-        msg = index (linebuffer + 1, ' ');
-        if (!msg)
-        {
-            fprintf (stderr, "Syntax error, w addr message\n");
-            return;
-        }
+		msg = strchr(strchr(linebuffer + 1, ' ') + 1, ' ');
+		
         msg++;
         strncpy (message, msg, sizeof (message));
         ret = twi_master_addr_write (twi, SLAVE_ADDR, addr, 1, message,
@@ -104,71 +99,47 @@ process_command (void)
     case 'r':
         mode = TWI_MODE_MASTER;
 
-        addr = atoi (linebuffer + 1);
-        msg = index (linebuffer + 1, ' ');
-        if (!msg)
-        {
-            fprintf (stderr, "Syntax error, r addr message\n");
-            return;
-        }
-        msg++;
+        addr = 2;
+
         /* NB, this blocks while the slave gets its act together.  */
-        ret = twi_master_addr_read_timeout (twi, SLAVE_ADDR, addr, 1, message,
-                                            sizeof (message) , TIMEOUT_US);
-        if (ret == sizeof (message))
-            fprintf (stderr, "Master read %d: %s\n", addr, message);        
+        ret = twi_master_addr_read_timeout (twi, SLAVE_ADDR, addr, 1, message_in,
+                                            sizeof (message_in) , TIMEOUT_US*2L);
+        if (ret == sizeof (message_in))
+		{
+            fprintf (stderr, "Master read %d:\n", addr);
+			unsigned int i = 0;
+			for (i; i < sizeof(message_in); i++)
+			{
+				fprintf (stderr, "%i ", message_in[i] );
+			}
+		}
         else
             fprintf (stderr, "Master read %d: error %d\n", addr, ret);        
         break;
+	
+	case 'k':
+		addr = 2;
+		
+		bool result = read_request(addr);
+		
+		if (result)
+		{
+			fprintf (stderr, "Master read %d:\n", addr);
+			unsigned int j = 0;
+			for (j; j < sizeof(camera_data); j++)
+			{
+				fprintf (stderr, "%i ", camera_data[j] );
+			}
+		}
+		else
+			fprintf (stderr, "Master read %d: error %d\n", addr, result);
+
         
     default:
         break;
     }
 }
 
-
-static void
-process_twi_slave (twi_t twi)
-{
-    static state_t state = STATE_ADDR;
-    static int write_count = 0;
-    static uint8_t addr = 0;
-    static char message[16];
-    twi_ret_t ret;
-
-    ret = twi_slave_poll (twi);
-    if (ret == 0)
-        return;
-
-    switch (state)
-    {
-    case STATE_ADDR:
-        if (twi_slave_read (twi, &addr, sizeof (addr)) == sizeof (addr))
-            state = STATE_DATA;
-        break;
-            
-    case STATE_DATA:
-        state = STATE_ADDR;
-        if (ret == TWI_READ)
-        {
-            ret = twi_slave_read (twi, message, sizeof (message));
-            if (ret == sizeof (message))
-                fprintf (stderr, "Slave read %d: %s\n", addr, message);
-            else
-                fprintf (stderr, "Slave read %d: error %d\n", addr, ret);        
-        }
-        else if (ret == TWI_WRITE)
-        {
-            sprintf (message, "Hello world! %d", write_count++);
-            ret = twi_slave_write (twi, message, sizeof (message));
-            if (ret == sizeof (message))
-                fprintf (stderr, "Slave write %d: %s\n", addr, message);
-            else
-                fprintf (stderr, "Slave write %d: error %d\n", addr, ret);        
-
-        }
-    }
-}
 
 
 int main (void)
@@ -203,8 +174,5 @@ int main (void)
 
         /* Check if USB disconnected.  */
         pio_output_set (USB_LED_PIO, usb_cdc_update ());
-
-        if (mode == TWI_MODE_SLAVE)
-            process_twi_slave (twi);
     }
 }

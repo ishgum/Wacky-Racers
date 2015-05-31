@@ -9,6 +9,7 @@
 #include "ir_driver.h"
 #include "bt_driver.h"
 #include "twi.h"
+#include "irq.h"
 
 
 #define BUTTON_OFF 10
@@ -22,9 +23,8 @@
 #define BUTTON_MUTE 20
 
 #define CAPTURE_ADDRESS 0
-#define CAPTURE_LINE_SIZE 100
+#define CAPTURE_LINE_SIZE 97
 #define FINAL_CAPTURE_LINE 255
-
 
 
 #define MOTOR_THROTTLE_ADDRESS 1
@@ -157,48 +157,79 @@ void motor_comms (uint8_t address, char byte) {
 
 bool capture_request (void) {
 	char camera_message[8] = {0};
-	pio_output_toggle(PIO_LED_Y);
     twi_ret_t ret;
 	
 	ret = twi_master_addr_write (twi, SLAVE_ADDR_C, CAPTURE_ADDRESS, 1, camera_message,
                                             sizeof (camera_message));
-	if (ret >= 0) {
-		return 1;
+	return (ret >= 0);
+}
+
+
+
+void send_bt_message(char * string)
+{
+	bt_write('M');
+	int i = 0;
+	while( string[i] ) {
+		bt_write(string[i++]);
 	}
-	else {
-		return 0;
+	bt_write('\n');
+}
+
+
+void itoa10(char * buffer, int length, int number)
+{
+	short k = 0;
+	if (number < 0)
+	{
+		number = -number;
+		buffer[0] = '-';
+		length -= 1;
+		k = 1;
+	}
+	
+	int i = length - 1;
+	for (; i >= 0 ; i--)
+	{
+		buffer[k + i] = '0' + (number%10);
+		number /= 10;
 	}
 }
 
 
-char camera_message[CAPTURE_LINE_SIZE] = {0};
 
-char* read_request (char address) {
+char camera_data[CAPTURE_LINE_SIZE] = {0};
+
+
+bool read_request (char address) {
     twi_ret_t ret;
 	
-	ret = twi_master_addr_read_timeout (twi, SLAVE_ADDR_C, address, 1, camera_message,
-                                            sizeof (camera_message) , TIMEOUT_US);
-											
-	if (ret >= 0) {
-		return 1;
-	}
-	else {
-		read_image = 0;
-		return 0;
-	}
+	irq_global_disable();
+	ret = twi_master_addr_read_timeout (twi, SLAVE_ADDR_C, address, 1, camera_data,
+                                            sizeof (camera_data) , TIMEOUT_US*4L);
+	irq_global_enable();
+	
+	char ret_str[8] = {0};
+	itoa10(ret_str, 4, ret);
+	send_bt_message( ret_str );
+							
+	return (ret >= 0);
 }
 
 
 
-void send_image (char* image_string, uint8_t read_address) {
+
+
+
+void send_image (uint8_t read_address) {
 	int i = 0;
+	bt_write('I');
 	for (; i < CAPTURE_LINE_SIZE; i++) {
-		bt_write(image_string[i]);
+		bt_write(camera_data[i]);
 	}
 	bt_write(read_address);
 	bt_write('\n');
 }
-
 
 
 void process_bt_command( char * string )
@@ -217,6 +248,11 @@ void process_bt_command( char * string )
 	if (string[0] == 'C') {
 		read_image = capture_request();
 	}
+	
+	//if (string[0] == 'G') {
+	//	pio_output_toggle(PIO_LED_Y);
+	//	image_poll();
+	//}
 }
 
 
@@ -254,7 +290,6 @@ void process_ir_command (unsigned int ir_data) {
 		printf("Super");
 	}
 	if (ir_data == BUTTON_MUTE && !read_image) {
-		pio_output_toggle(PIO_LED_Y);
 		read_image = capture_request();
 		pio_output_set(PIO_LED_R, read_image);
 	}
@@ -263,19 +298,22 @@ void process_ir_command (unsigned int ir_data) {
 
 
 void image_poll(void) {
-	static uint8_t read_address = 0;
+	static uint8_t read_address = 1;
 	
 	if (read_image) {
 		if ( read_request(read_address) )
-			pio_output_toggle(PIO_LED_Y);
-			send_image(camera_message, read_address++);
+		{
+			pio_output_set(PIO_LED_R, 0);
+			send_image(read_address++);
+		}
+		pio_output_set(PIO_LED_R, 1);
 	}
 	else if (read_address == FINAL_CAPTURE_LINE ){
 		read_image = 0;
-		read_address = 0;
+		read_address = 1;
 	}
 	else{
-		read_address = 0;
+		read_address = 1;
 	}
 }
 
@@ -372,7 +410,7 @@ int main (void)
 		
 		
 		/* Check if USB disconnected.  */
-		pio_output_set (PIO_LED_R, pio_input_get(PIO_DIP_4));
+		//pio_output_set (PIO_LED_R, pio_input_get(PIO_DIP_4));
 		//pio_output_set (PIO_LED_Y, usb_cdc_update ());
 		pio_output_set(PIO_LED_G, bt_connected());
 		
@@ -393,11 +431,11 @@ int main (void)
 			}
 		}
 		
-		motor_poll();
+		//motor_poll();
 		
-		if (tick % 200) {
+		if ( !(tick % 20) ) {
 			image_poll();
-			//pio_output_toggle(PIO_LED_Y);
+			pio_output_toggle(PIO_LED_Y);
 		}
 		
 		tick++;

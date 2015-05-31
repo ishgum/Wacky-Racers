@@ -26,6 +26,10 @@
 #define PIO_LED_Y PA22_PIO
 #define PIO_LED_G PA21_PIO
 
+#define LED1_PIO PIO_LED_G
+#define LED2_PIO PIO_LED_R
+
+
 //#define USB_VBUS_PIO PA24_PIO
 #define PIO_USB_VBUS PA24_PIO
 #define PIO_AUX_ENABLE PA20_PIO
