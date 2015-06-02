@@ -41,7 +41,7 @@
 
 #define PACER_RATE 1000
 
-#define TIMEOUT_US 2000
+#define TIMEOUT_US 1000
 
 #define SLAVE_ADDR_M 0x42
 #define SLAVE_ADDR_C 0x21
@@ -145,7 +145,7 @@ process_serial_command (void)
 
 
 void motor_comms (uint8_t address, char byte) {
-    char message[16] = {0};
+    char message[8] = {0};
     twi_ret_t ret;
 	message[0] = byte;
 	message[1] = 0;
@@ -155,9 +155,12 @@ void motor_comms (uint8_t address, char byte) {
 }
 
 
+uint8_t read_address = 1;
 bool capture_request (void) {
 	char camera_message[8] = {0};
     twi_ret_t ret;
+	
+	read_address = 1;
 	
 	ret = twi_master_addr_write (twi, SLAVE_ADDR_C, CAPTURE_ADDRESS, 1, camera_message,
                                             sizeof (camera_message));
@@ -209,10 +212,13 @@ bool read_request (char address) {
                                             sizeof (camera_data) , TIMEOUT_US*4L);
 	irq_global_enable();
 	
-	char ret_str[8] = {0};
-	itoa10(ret_str, 4, ret);
-	send_bt_message( ret_str );
-							
+	if (ret < 0)
+	{
+		char ret_str[8] = {0};
+		itoa10(ret_str, 4, ret);
+		send_bt_message( ret_str );
+	}	
+	
 	return (ret >= 0);
 }
 
@@ -297,23 +303,20 @@ void process_ir_command (unsigned int ir_data) {
 }
 
 
+bool line_to_send = 0;
 void image_poll(void) {
-	static uint8_t read_address = 1;
 	
 	if (read_image) {
+		pio_output_toggle(PIO_LED_Y);
 		if ( read_request(read_address) )
 		{
-			pio_output_set(PIO_LED_R, 0);
-			send_image(read_address++);
+			line_to_send = 1;
 		}
-		pio_output_set(PIO_LED_R, 1);
 	}
-	else if (read_address == FINAL_CAPTURE_LINE ){
+	if (read_address == FINAL_CAPTURE_LINE ){
 		read_image = 0;
 		read_address = 1;
-	}
-	else{
-		read_address = 1;
+		pio_output_set(PIO_LED_Y, 0);
 	}
 }
 
@@ -339,7 +342,10 @@ void motor_poll(void) {
 	}
 	else {motors.turn_update++;}
 	
-	
+}
+
+void motor_send(void)
+{
 	motor_comms(1, motors.throttle);
 	motor_comms(2, motors.turn);
 	printf("Current Values, Motor: %u, Turn: %u\n\r", motors.throttle, motors.turn);
@@ -431,11 +437,23 @@ int main (void)
 			}
 		}
 		
-		//motor_poll();
 		
-		if ( !(tick % 20) ) {
-			image_poll();
-			pio_output_toggle(PIO_LED_Y);
+		motor_poll();
+		
+		if ( !(read_image || read_address) )
+		{
+			motor_send();
+		}
+		else
+		{
+			if ( !(tick % 20) ) {
+				image_poll();
+			}
+			else if (line_to_send && !((tick+5) %20))
+			{
+				send_image(read_address++);
+				line_to_send = 0;
+			}
 		}
 		
 		tick++;
