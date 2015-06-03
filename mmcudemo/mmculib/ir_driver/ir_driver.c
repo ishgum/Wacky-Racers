@@ -46,8 +46,12 @@
 #define CHANNEL_UP_BUTTON 3772795063
 #define CHANNEL_DOWN_BUTTON 3772778743
 #define MUTE_BUTTON 3772837903
+#define UP_LEFT_BUTTON 3772830253
+#define UP_RIGHT_BUTTON 3772839943
+#define DOWN_LEFT_BUTTON 3772783333
+#define DOWN_RIGHT_BUTTON 3772822603
 
-#define NUM_BUTTONS 21
+#define NUM_BUTTONS 25
 
 static int irCount = 0;
 static bool startFound = 0;
@@ -79,7 +83,12 @@ static unsigned long button[] = {ZERO_BUTTON,		//0
 								 VOLUME_DOWN_BUTTON,//17
 								 CHANNEL_UP_BUTTON, //18
 								 CHANNEL_DOWN_BUTTON,//19
-								 MUTE_BUTTON};		//20
+								 MUTE_BUTTON,		 //20
+								 UP_LEFT_BUTTON,	//21
+								 UP_RIGHT_BUTTON,	//22
+								 DOWN_LEFT_BUTTON,	//23				 
+								 DOWN_RIGHT_BUTTON	//24
+								 };		
 
 
 void irInterruptHandler (void) {
@@ -177,7 +186,7 @@ unsigned int irRead (void)
 			return 127;
 		}
 	}	
-	//printf("Final: %lu\n\r", data);  	// Debug
+	printf("Final: %lu\n\r", data);  	// Debug
 	irClear();
 	
 	unsigned int i = 0;

@@ -54,5 +54,7 @@
 #define PIO_BT_RX PA6_PIO
 #define PIO_BT_TX PA5_PIO
 
+#define SDA_PIO PA3_PIO
+#define SCL_PIO PA4_PIO
 
 #endif /* TARGET_H  */
