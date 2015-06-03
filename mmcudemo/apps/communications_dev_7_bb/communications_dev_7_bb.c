@@ -40,7 +40,7 @@
 
 #define MOTOR_TURN_ADDRESS 2
 #define MOTOR_TURN_LEFT_SLOW 50
-#define MOTOR_TURN_LEFT_FAST 0
+#define MOTOR_TURN_LEFT_FAST 1
 #define MOTOR_TURN_RIGHT_SLOW 200
 #define MOTOR_TURN_RIGHT_FAST 255
 #define MOTOR_TURN_CENTRE 127
@@ -49,8 +49,8 @@
 
 #define TIMEOUT_US 2000
 
-#define SLAVE_ADDR_M 0x42
-#define SLAVE_ADDR_C 0x21
+#define SLAVE_ADDR_M 0x33
+#define SLAVE_ADDR_C 0x32
 
 #define CLOCK_SPEED 40e3
 
@@ -89,11 +89,12 @@ i2c_t i2c_slaveC;
 
 
 
-void motor_comms (i2c_addr_t address, char byte) {
-    char message[8] = {0};
+void motor_comms (i2c_addr_t address, char byte, char byte2) {
+    char message[4] = {0};
     int ret = 0;
 	message[0] = byte;
-	message[1] = 0;
+	message[1] = byte2;
+	message[2] = 0;
 	ret = i2c_master_addr_write (i2c_slaveM, SLAVE_ADDR_M, address, 1, message, sizeof(message));
 	printf("Motors: %i\n\r", ret);
 }
@@ -137,11 +138,11 @@ void process_bt_command( char * string )
 	if (string[0] == 'M') {
 		if (string[1] == 1) {
 			motors.throttle_update = 0;
-			motors.desired_throttle = string[2];
+			motors.throttle = string[2];
 		}
 		if (string[1] == 2) {
 			motors.turn_update = 0;
-			motors.desired_turn = string[2];
+			motors.turn = string[2];
 		}
 	}
 
@@ -253,8 +254,8 @@ void motor_poll(void) {
 	else {motors.turn_update++;}
 
 	
-	motor_comms(1, motors.throttle);
-	motor_comms(2, motors.turn);
+	motor_comms(1,motors.throttle,motors.turn);
+	//motor_comms(2, motors.turn);
 	//printf("Current Values, Motor: %u, Turn: %u\n\r", motors.throttle, motors.turn);
 }
 
@@ -343,12 +344,14 @@ int main (void)
 			}
 		}
 		
-		//motor_poll();
+		motor_poll();
+		
 		
 		if (tick % 10) {
 			image_poll();
 			pio_output_toggle (PIO_LED_Y);
 		}
+		
 		
 		tick++;
 

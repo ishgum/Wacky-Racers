@@ -41,7 +41,7 @@
 
 #define PACER_RATE 1000
 
-#define TIMEOUT_US 1000
+#define TIMEOUT_US 2000
 
 #define SLAVE_ADDR_M 0x42
 #define SLAVE_ADDR_C 0x21
@@ -74,6 +74,7 @@ static const twi_cfg_t twi_cfg =
 
 typedef enum {STATE_ADDR, STATE_DATA} state_t;
 
+enum {LOOP_POLL_RATE = 200};
 enum {LINEBUFFER_SIZE = 80};
 
 static int char_count = 0;
@@ -144,15 +145,21 @@ process_serial_command (void)
 
 
 
-void motor_comms (uint8_t address, char byte) {
-    char message[8] = {0};
+void motor_comms (uint8_t address, char byte, char byte2) {
+    char message[4] = {0};
     twi_ret_t ret;
 	message[0] = byte;
-	message[1] = 0;
+	message[1] = byte2;
+	message[2] = 0;
 	ret = twi_master_addr_write (twi, SLAVE_ADDR_M, address, 1, message,
 								 sizeof (message));
 	
 }
+
+
+
+#define TICKS_TILL_READ (LOOP_POLL_RATE*3)
+int read_delay_ticks = TICKS_TILL_READ;
 
 
 uint8_t read_address = 1;
@@ -164,6 +171,7 @@ bool capture_request (void) {
 	
 	ret = twi_master_addr_write (twi, SLAVE_ADDR_C, CAPTURE_ADDRESS, 1, camera_message,
                                             sizeof (camera_message));
+	read_delay_ticks = TICKS_TILL_READ;
 	return (ret >= 0);
 }
 
@@ -212,6 +220,9 @@ bool read_request (char address) {
                                             sizeof (camera_data) , TIMEOUT_US*4L);
 	irq_global_enable();
 	
+	char dummy_data[8] = {0}; 
+	twi_master_addr_write (twi, SLAVE_ADDR_C, address, 0, dummy_data, sizeof(dummy_data));
+	
 	if (ret < 0)
 	{
 		char ret_str[8] = {0};
@@ -221,9 +232,6 @@ bool read_request (char address) {
 	
 	return (ret >= 0);
 }
-
-
-
 
 
 
@@ -253,12 +261,8 @@ void process_bt_command( char * string )
 
 	if (string[0] == 'C') {
 		read_image = capture_request();
+		read_image = 1;
 	}
-	
-	//if (string[0] == 'G') {
-	//	pio_output_toggle(PIO_LED_Y);
-	//	image_poll();
-	//}
 }
 
 
@@ -375,11 +379,6 @@ void init_pins( void )
 }
 
 
-
-/* Define how fast ticks occur.  This must be faster than
-   TICK_RATE_MIN.  */
-enum {LOOP_POLL_RATE = 200};
-
 int main (void)
 {		
 	init_pins();
@@ -439,22 +438,31 @@ int main (void)
 		
 		
 		motor_poll();
-		
-		if ( !(read_image || read_address) )
+
+		if (read_image)
 		{
-			motor_send();
+			if (!read_delay_ticks)
+			{
+				if ( !(tick % 20) ) {
+					image_poll();
+				}
+			}
+			else
+			{
+				read_delay_ticks--;
+			}
+		}
+		
+		if (line_to_send && !((tick+5) %20))
+		{
+			send_image(read_address++);
+		    line_to_send = 0;
 		}
 		else
 		{
-			if ( !(tick % 20) ) {
-				image_poll();
-			}
-			else if (line_to_send && !((tick+5) %20))
-			{
-				send_image(read_address++);
-				line_to_send = 0;
-			}
+			motor_send();
 		}
+		
 		
 		tick++;
     }

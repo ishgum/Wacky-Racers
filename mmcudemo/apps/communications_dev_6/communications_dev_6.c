@@ -25,7 +25,7 @@
 #define BUTTON_DOWN_LEFT 23
 #define BUTTON_DOWN_RIGHT 24
 
-#define CAPTURE_ADDRESS 0
+#define CAPTURE_ADDRESS 1
 #define CAPTURE_LINE_SIZE 100
 #define FINAL_CAPTURE_LINE 255
 
@@ -40,7 +40,7 @@
 
 #define MOTOR_TURN_ADDRESS 2
 #define MOTOR_TURN_LEFT_SLOW 50
-#define MOTOR_TURN_LEFT_FAST 0
+#define MOTOR_TURN_LEFT_FAST 1
 #define MOTOR_TURN_RIGHT_SLOW 200
 #define MOTOR_TURN_RIGHT_FAST 255
 #define MOTOR_TURN_CENTRE 127
@@ -150,13 +150,13 @@ process_serial_command (void)
 
 
 void motor_comms (uint8_t address, char byte) {
-    char message[8] = {0};
+    char message[4] = {0};
     twi_ret_t ret;
 	message[0] = byte;
 	message[1] = 0;
 	ret = twi_master_addr_write (twi, SLAVE_ADDR_M, address, 1, message,
 								 sizeof (message));
-	
+	printf("data: %u m: %i\r\n", message[0], ret);
 }
 
 
@@ -164,12 +164,25 @@ static bool read_image = 0;
 bool capture_request (void) {
 	char camera_message[8] = {0};
     twi_ret_t ret;
-	
+
+	camera_message[0] = 1;
 	ret = twi_master_addr_read_timeout (twi, SLAVE_ADDR_C, CAPTURE_ADDRESS, 1, camera_message,
                                             sizeof (camera_message) , TIMEOUT_US);
 	return (ret >= 0);
 }
 
+
+bool set_image_buffer(uint8_t buffer) {
+	char camera_message[8] = { 0 };
+	twi_ret_t ret;
+
+	camera_message[0] = 0;
+	camera_message[1] = buffer;
+	camera_message[1] = buffer;
+	ret = twi_master_addr_read_timeout(twi, SLAVE_ADDR_C, CAPTURE_ADDRESS, 1, camera_message,
+		sizeof(camera_message), TIMEOUT_US);
+	return (ret >= 0);
+}
 
 
 int read_request (char address, char* camera_data) {
@@ -201,16 +214,20 @@ void process_bt_command( char * string )
 	if (string[0] == 'M') {
 		if (string[1] == 1) {
 			motors.throttle_update = 0;
-			motors.desired_throttle = string[2];
+			motors.throttle = string[2];
 		}
 		if (string[1] == 2) {
 			motors.turn_update = 0;
-			motors.desired_turn = string[2];
+			motors.turn = string[2];
 		}
 	}
 
 	if (string[0] == 'C') {
 		read_image = capture_request();
+	}
+
+	if (string[0] == 'B') {
+		set_image_buffer(string[1]);
 	}
 }
 
@@ -236,7 +253,7 @@ void process_ir_command (unsigned int ir_data) {
 		motors.turn_update = 0;
 		motors.throttle_update = 0;
 		motors.turn = MOTOR_TURN_LEFT_FAST;
-		motors.throttle = MOTOR_THROTTLE_TURN;
+		motors.throttle = MOTOR_THROTTLE_FORWARD;
 	}
 	if (ir_data == BUTTON_DOWN_LEFT) {
 		motors.turn_update = 0;
@@ -254,7 +271,7 @@ void process_ir_command (unsigned int ir_data) {
 		motors.turn_update = 0;
 		motors.throttle_update = 0;
 		motors.turn = MOTOR_TURN_RIGHT_FAST;
-		motors.throttle = MOTOR_THROTTLE_TURN;
+		motors.throttle = MOTOR_THROTTLE_FORWARD;
 	}
 	if (ir_data == BUTTON_DOWN_RIGHT) {
 		motors.turn_update = 0;
@@ -270,7 +287,7 @@ void process_ir_command (unsigned int ir_data) {
 		motors.throttle = MOTOR_THROTTLE_STOP;
 		motors.turn = MOTOR_TURN_CENTRE;
 	}
-	if (ir_data == BUTTON_MUTE && !read_image) {
+	if (ir_data == BUTTON_MUTE) {
 		read_image = capture_request();
 		pio_output_set(PIO_LED_R, read_image);
 	}
@@ -302,6 +319,7 @@ void motors_init(void) {
 	motors.turn_update = 0;
 }
 
+
 void motor_poll(void) {
 	if (motors.throttle_update > 20) {
 		motors.throttle = MOTOR_THROTTLE_STOP;
@@ -313,10 +331,9 @@ void motor_poll(void) {
 	}
 	else {motors.turn_update++;}
 
-	
 	motor_comms(1, motors.throttle);
 	motor_comms(2, motors.turn);
-	printf("Current Values, Motor: %u, Turn: %u\n\r", motors.throttle, motors.turn);
+	//printf("Current Values, Motor: %u, Turn: %u\n\r", motors.throttle, motors.turn);
 }
 
 
@@ -385,32 +402,41 @@ int main (void)
 		
 		/* Check if USB disconnected.  */
 		pio_output_set (PIO_LED_R, pio_input_get(PIO_DIP_4));
-		pio_output_set (PIO_LED_Y, usb_cdc_update ());
-		pio_output_set(PIO_LED_G, bt_connected());
+		usb_cdc_update(); //pio_output_set (PIO_LED_Y, usb_cdc_update ());
 		
+		if (bt_connected())
+		{
+			pio_output_high(PIO_LED_G);
+			if (bt_read()) {
+				process_bt_command(bt_data);
+			}
+		}
+		else
+		{
+			pio_output_low(PIO_LED_G);
+			if (irCTR()) {
+				process_ir_command(irRead());
+			}
+		}
+
 		if (pio_input_get(PIO_DIP_3)) {
 			if (usb_cdc_read_ready_p (usb_cdc))
 				process_serial_command ();
 		}
 		
-		if (pio_input_get(PIO_DIP_4)) {
-			if (bt_read()) {
-				process_bt_command(bt_data);
-			}
-		}
-		
-		if (!pio_input_get(PIO_DIP_4)) {
-			if (irCTR()) {
-				process_ir_command(irRead());
-			}
-		}
-		
 		motor_poll();
 		
-		if (tick % LOOP_POLL_RATE/10) {
+		/*
+		if ( !(tick % LOOP_POLL_RATE/10) ) {
 			image_poll();
 		}
-		
+		*/
+
+		if ( !(tick % (LOOP_POLL_RATE /2) ) )
+		{
+			pio_output_toggle(PIO_LED_Y);
+		}
+
 		tick++;
 
     }
