@@ -31,8 +31,8 @@ main (void)
 
     while (1)
     {
-        uint8_t tx[] = {1, 2, 3, 4};
-        uint8_t rx[] = {0, 0, 0, 0};
+        uint8_t tx[] = {1};
+        uint8_t rx[] = {0};
         i2c_addr_t addr = 1;
 
         pacer_wait ();
@@ -40,7 +40,7 @@ main (void)
         i2c_master_addr_write (i2c_slave1, SLAVE_ADDR, addr, 1, tx, sizeof(tx));
 
         i2c_master_addr_read (i2c_slave1, SLAVE_ADDR, addr, 1, rx, sizeof(rx));
-
+		pio_output_set(PIO_LED_G, rx[0]);
         /* TODO: check if rx matches tx.  */
     }
 }

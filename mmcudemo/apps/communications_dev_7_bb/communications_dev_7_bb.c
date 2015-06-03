@@ -89,7 +89,7 @@ i2c_t i2c_slaveC;
 
 
 
-void motor_comms (uint8_t address, char byte) {
+void motor_comms (i2c_addr_t address, char byte) {
     char message[8] = {0};
     int ret = 0;
 	message[0] = byte;
@@ -110,7 +110,7 @@ bool capture_request (void) {
 
 
 
-int read_request (char address, char* camera_data) {
+int read_request (i2c_addr_t address, char* camera_data) {
     int ret = 0;
 	ret = i2c_master_addr_read (i2c_slaveC, SLAVE_ADDR_C, address, 1, camera_data, sizeof(camera_data));
 	printf("Camera Read: %i\n\r", ret);
@@ -215,11 +215,13 @@ void process_ir_command (unsigned int ir_data) {
 
 
 void image_poll(void) {
-	static uint8_t read_address = 0;
+	static i2c_addr_t read_address = 0;
 	char camera_data[CAPTURE_LINE_SIZE] = {0};
 	
-	if (read_image && read_request(read_address, camera_data)) {
-		send_image(camera_data, read_address++);
+	if (read_image){
+			if (read_request(read_address++, camera_data)){
+				send_image(camera_data, read_address);
+			}
 	}
 	else if (read_address == FINAL_CAPTURE_LINE ){
 		printf("Finished");
@@ -326,7 +328,7 @@ int main (void)
 		pio_output_set(PIO_LED_G, bt_connected());
 		
 		if (pio_input_get(PIO_DIP_3)) {
-			pio_output_set (PIO_LED_Y, usb_cdc_update ());
+			usb_cdc_update ();
 		}
 		
 		if (pio_input_get(PIO_DIP_4)) {
@@ -343,8 +345,9 @@ int main (void)
 		
 		//motor_poll();
 		
-		if (tick % LOOP_POLL_RATE/10) {
+		if (tick % 10) {
 			image_poll();
+			pio_output_toggle (PIO_LED_Y);
 		}
 		
 		tick++;
